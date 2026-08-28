@@ -1,0 +1,100 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&display=swap");
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --color-bg: #0e0d0b;
+  --color-surface: #161410;
+  --color-elevated: #1f1b16;
+  --color-fg: #e8e0d4;
+  --color-muted: #9a9286;
+  --color-subtle: #6f6a62;
+  --color-primary: #e8e0d4;
+  --color-primary-fg: #0e0d0b;
+  --color-border: #2a2620;
+  --color-border-strong: #3d372f;
+  --color-auspicious: #6b8f78;
+  --color-auspicious-fg: #d7eadc;
+  --color-inauspicious: #b85c4a;
+  --color-inauspicious-fg: #f3d4cc;
+  --color-warn: #c4a574;
+  --color-ring: #c8c2b6;
+  --font-sans: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+  --font-display: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --shadow-panel: 0 0 0 1px #2a2620;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+    color-scheme: dark;
+  }
+
+  input[type="date"],
+  input[type="time"] {
+    color: var(--color-fg);
+    background-color: var(--color-elevated);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.luoshu-grid {
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--color-fg) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--color-fg) 6%, transparent) 1px, transparent 1px);
+  background-size: 12px 12px;
+}

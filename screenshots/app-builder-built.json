@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "奇门权衡",
+      "hasCanvas": false,
+      "bodyTextLen": 691,
+      "bodyTextHash": "ca65c3de7b29d978d3ff719aeb6ae717f7810bc06cfc873b630ae321b02d3021",
+      "bodyTextPrefix": "奇门权衡 以数权衡时空 · 以盘决断人事 2026-08-28 17:22 北京时间 · 酉时 丙午 丙申 甲戌 癸酉 起盘 时",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "奇门权衡",
+      "hasCanvas": false,
+      "bodyTextLen": 389,
+      "bodyTextHash": "b86554329be2a245675c7339cd63a6e0122684cd59cb753f56e89fac2d2082ad",
+      "bodyTextPrefix": "奇门权衡 以数权衡时空 · 以盘决断人事 起盘 时间用北京时间。时辰一换，盘面与权重即变。 全盘扫描 定向问事 日期 时刻 此刻",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}
