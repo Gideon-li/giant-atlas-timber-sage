@@ -10,7 +10,7 @@ import {
   STEM_ELEMENT,
 } from "./constants";
 import { changshengOf, formatCivil, getFourPillars, getJu, getXun, hourToZhiIndex, type CivilTime } from "./calendar";
-import type { ChartMeta, Palace, PalaceId, QimenChart } from "./types";
+import type { ChartMeta, JuInfo, Palace, PalaceId, QimenChart } from "./types";
 
 function rotatePalace(from: PalaceId, steps: number, yang: boolean): PalaceId {
   if (from === 5) return 5;
@@ -95,9 +95,9 @@ function wuxingKe(a: string, b: string): boolean {
   return (i + 2) % 5 === j;
 }
 
-export function buildChart(civil: CivilTime): QimenChart {
+export function buildChart(civil: CivilTime, juOverride?: JuInfo): QimenChart {
   const pillars = getFourPillars(civil);
-  const ju = getJu(civil);
+  const ju = juOverride ?? getJu(civil);
   const { xunShou, xunYi, xunKong } = getXun(civil);
   const yang = ju.dun === "yang";
   const hourStem = pillars.hour.stem;

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { applyTrueSolar, beijingNow, type CivilTime } from "@/lib/qimen/calendar";
+import { applyTrueSolar, beijingNow, getJuFromLots, type CivilTime } from "@/lib/qimen/calendar";
 import { CITIES, EVENTS } from "@/lib/qimen/constants";
 import { buildChart } from "@/lib/qimen/chart";
 import { peopleRelations, scoreAllEvents, scoreEvent } from "@/lib/qimen/score";
@@ -8,11 +8,15 @@ import type { EventId, EventScore, Gender, PalaceId, PeopleLink, QimenChart } fr
 
 export type Mode = "scan" | "ask";
 export type ViewTab = "board" | "events" | "people";
+export type Casting = "chaibu" | "lots";
 
 export type QueryState = {
   civil: CivilTime;
   trueSolar: boolean;
   cityId: string;
+  casting: Casting;
+  lotsMonth: number;
+  lotsJu: number;
   mode: Mode;
   tab: ViewTab;
   personName: string;
@@ -26,6 +30,8 @@ type AppStore = QueryState & {
   setCivil: (civil: CivilTime) => void;
   setField: <K extends keyof QueryState>(key: K, value: QueryState[K]) => void;
   useNow: () => void;
+  setLotsMonth: (month: number) => void;
+  drawLots: () => void;
   resolvedCivil: () => CivilTime;
   compute: () => {
     chart: QimenChart;
@@ -43,6 +49,9 @@ export const useAppStore = create<AppStore>()(
       civil: defaultCivil,
       trueSolar: false,
       cityId: "beijing",
+      casting: "chaibu",
+      lotsMonth: defaultCivil.month,
+      lotsJu: 5,
       mode: "scan",
       tab: "events",
       personName: "",
@@ -52,7 +61,18 @@ export const useAppStore = create<AppStore>()(
       selectedPalace: null,
       setCivil: (civil) => set({ civil }),
       setField: (key, value) => set({ [key]: value } as Partial<QueryState>),
-      useNow: () => set({ civil: beijingNow() }),
+      useNow: () => {
+        const now = beijingNow();
+        set({ civil: now, lotsMonth: now.month });
+      },
+      setLotsMonth: (month) => {
+        const { civil } = get();
+        set({ lotsMonth: month, civil: { ...civil, month } });
+      },
+      drawLots: () => {
+        const n = 1 + Math.floor(Math.random() * 9);
+        set({ lotsJu: n });
+      },
       resolvedCivil: () => {
         const { civil, trueSolar, cityId } = get();
         if (!trueSolar) return civil;
@@ -61,7 +81,9 @@ export const useAppStore = create<AppStore>()(
       },
       compute: () => {
         const s = get();
-        const chart = buildChart(s.resolvedCivil());
+        const juOverride =
+          s.casting === "lots" ? getJuFromLots(s.lotsMonth || s.civil.month, s.lotsJu || 5) : undefined;
+        const chart = buildChart(s.resolvedCivil(), juOverride);
         const birthYear = s.birthYear.trim() ? Number(s.birthYear) : null;
         const opts = {
           gender: s.gender,
@@ -79,6 +101,9 @@ export const useAppStore = create<AppStore>()(
         civil: s.civil,
         trueSolar: s.trueSolar,
         cityId: s.cityId,
+        casting: s.casting,
+        lotsMonth: s.lotsMonth,
+        lotsJu: s.lotsJu,
         mode: s.mode,
         personName: s.personName,
         gender: s.gender,

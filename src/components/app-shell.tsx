@@ -23,6 +23,9 @@ export function AppShell() {
   const compute = useAppStore((s) => s.compute);
   const trueSolar = useAppStore((s) => s.trueSolar);
   const cityId = useAppStore((s) => s.cityId);
+  const casting = useAppStore((s) => s.casting);
+  const lotsMonth = useAppStore((s) => s.lotsMonth);
+  const lotsJu = useAppStore((s) => s.lotsJu);
 
   useEffect(() => {
     const unsub = useAppStore.persist.onFinishHydration(() => {
@@ -41,7 +44,7 @@ export function AppShell() {
 
   const result = useMemo(
     () => compute(),
-    [civil, trueSolar, cityId, eventId, compute, personName, gender, birthYear, hydrated],
+    [civil, trueSolar, cityId, eventId, compute, personName, gender, birthYear, hydrated, casting, lotsMonth, lotsJu],
   );
 
   const { chart, events, focus, people } = result;
@@ -167,8 +170,8 @@ export function AppShell() {
         </div>
 
         <p className="mt-10 mb-6 text-center text-xs leading-5 text-subtle">
-          拆补法转盘奇门。神应开始、星应过程、门应收局；日时干支刑冲克害合为辅助权重。
-          本工具将传统盘面结构化为可计算模型，供学习与辅助决策，并非定论。
+          拆补时盘或求签定局。神应开始、星应过程、门应收局；日时干支刑冲克害合为辅助权重。
+          求签以月份定阴阳遁、以所选 1–9 为局。供学习与辅助决策，并非定论。
         </p>
       </main>
     </div>

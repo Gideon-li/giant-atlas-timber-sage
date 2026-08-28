@@ -1,6 +1,6 @@
 import { HeavenStem, EarthBranch, SolarTime } from "tyme4ts";
 import { JU_BY_TERM } from "./constants";
-import type { FourPillars, JuInfo, Pillar, Yuan } from "./types";
+import type { DunType, FourPillars, JuInfo, Pillar, Yuan } from "./types";
 
 export type CivilTime = {
   year: number;
@@ -64,6 +64,40 @@ export function getJu(civil: CivilTime): JuInfo {
     label: `${term}${yuan} ${dunLabel}${ju}局`,
   };
 }
+
+/** 以月份近似阴阳遁：冬至后至夏至前为阳遁（12–5月），夏至后至冬至前为阴遁（6–11月）。 */
+export function dunFromSolarMonth(month: number): DunType {
+  return month >= 6 && month <= 11 ? "yin" : "yang";
+}
+
+export function getJuFromLots(month: number, ju: number): JuInfo {
+  const clamped = Math.min(9, Math.max(1, Math.round(ju)));
+  const dun = dunFromSolarMonth(month);
+  const dunLabel = dun === "yang" ? "阳遁" : "阴遁";
+  return {
+    term: `${month}月`,
+    termDayIndex: 0,
+    yuan: "中元",
+    dun,
+    ju: clamped,
+    label: `求签 · ${month}月${dunLabel}${clamped}局`,
+  };
+}
+
+export const MONTH_NAMES = [
+  "正月",
+  "二月",
+  "三月",
+  "四月",
+  "五月",
+  "六月",
+  "七月",
+  "八月",
+  "九月",
+  "十月",
+  "十一月",
+  "十二月",
+] as const;
 
 export function getXun(civil: CivilTime): { xunShou: string; xunYi: string; xunKong: string[] } {
   const hour = getHourCycle(civil);

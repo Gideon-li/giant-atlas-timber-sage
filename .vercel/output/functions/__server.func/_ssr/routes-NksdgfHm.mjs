@@ -7,7 +7,7 @@ import { n as create, t as persist } from "../_libs/zustand.mjs";
 import { t as Slot } from "../_libs/radix-ui__react-slot.mjs";
 import { n as clsx, t as cva } from "../_libs/class-variance-authority+clsx.mjs";
 import { t as twMerge } from "../_libs/tailwind-merge.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-BX5jbgID.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-NksdgfHm.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var QI_YI = [
@@ -1005,6 +1005,37 @@ function getJu(civil) {
 		label: `${term}${yuan} ${dunLabel}${ju}局`
 	};
 }
+/** 以月份近似阴阳遁：冬至后至夏至前为阳遁（12–5月），夏至后至冬至前为阴遁（6–11月）。 */
+function dunFromSolarMonth(month) {
+	return month >= 6 && month <= 11 ? "yin" : "yang";
+}
+function getJuFromLots(month, ju) {
+	const clamped = Math.min(9, Math.max(1, Math.round(ju)));
+	const dun = dunFromSolarMonth(month);
+	const dunLabel = dun === "yang" ? "阳遁" : "阴遁";
+	return {
+		term: `${month}月`,
+		termDayIndex: 0,
+		yuan: "中元",
+		dun,
+		ju: clamped,
+		label: `求签 · ${month}月${dunLabel}${clamped}局`
+	};
+}
+var MONTH_NAMES = [
+	"正月",
+	"二月",
+	"三月",
+	"四月",
+	"五月",
+	"六月",
+	"七月",
+	"八月",
+	"九月",
+	"十月",
+	"十一月",
+	"十二月"
+];
 function getXun(civil) {
 	const hour = getHourCycle(civil);
 	const xunShou = hour.getTen().getName();
@@ -1184,9 +1215,9 @@ function wuxingKe(a, b) {
 	if (i < 0 || j < 0) return false;
 	return (i + 2) % 5 === j;
 }
-function buildChart(civil) {
+function buildChart(civil, juOverride) {
 	const pillars = getFourPillars(civil);
-	const ju = getJu(civil);
+	const ju = juOverride ?? getJu(civil);
 	const { xunShou, xunYi, xunKong } = getXun(civil);
 	const yang = ju.dun === "yang";
 	const hourStem = pillars.hour.stem;
@@ -1830,6 +1861,9 @@ var useAppStore = create()(persist((set, get) => ({
 	civil: defaultCivil,
 	trueSolar: false,
 	cityId: "beijing",
+	casting: "chaibu",
+	lotsMonth: defaultCivil.month,
+	lotsJu: 5,
 	mode: "scan",
 	tab: "events",
 	personName: "",
@@ -1839,7 +1873,26 @@ var useAppStore = create()(persist((set, get) => ({
 	selectedPalace: null,
 	setCivil: (civil) => set({ civil }),
 	setField: (key, value) => set({ [key]: value }),
-	useNow: () => set({ civil: beijingNow() }),
+	useNow: () => {
+		const now = beijingNow();
+		set({
+			civil: now,
+			lotsMonth: now.month
+		});
+	},
+	setLotsMonth: (month) => {
+		const { civil } = get();
+		set({
+			lotsMonth: month,
+			civil: {
+				...civil,
+				month
+			}
+		});
+	},
+	drawLots: () => {
+		set({ lotsJu: 1 + Math.floor(Math.random() * 9) });
+	},
 	resolvedCivil: () => {
 		const { civil, trueSolar, cityId } = get();
 		if (!trueSolar) return civil;
@@ -1847,7 +1900,8 @@ var useAppStore = create()(persist((set, get) => ({
 	},
 	compute: () => {
 		const s = get();
-		const chart = buildChart(s.resolvedCivil());
+		const juOverride = s.casting === "lots" ? getJuFromLots(s.lotsMonth || s.civil.month, s.lotsJu || 5) : void 0;
+		const chart = buildChart(s.resolvedCivil(), juOverride);
 		const birthYear = s.birthYear.trim() ? Number(s.birthYear) : null;
 		const opts = {
 			gender: s.gender,
@@ -1866,6 +1920,9 @@ var useAppStore = create()(persist((set, get) => ({
 		civil: s.civil,
 		trueSolar: s.trueSolar,
 		cityId: s.cityId,
+		casting: s.casting,
+		lotsMonth: s.lotsMonth,
+		lotsJu: s.lotsJu,
 		mode: s.mode,
 		personName: s.personName,
 		gender: s.gender,
@@ -1906,16 +1963,38 @@ function Button({ className, variant, size, asChild = false, ...props }) {
 		...props
 	});
 }
+function Badge({ className, tone = "neutral", children }) {
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+		className: cn("inline-flex items-center rounded-sm px-1.5 py-0.5 text-[11px] font-medium tracking-wide", tone === "neutral" && "bg-elevated text-muted", tone === "good" && "bg-auspicious/15 text-auspicious-fg", tone === "bad" && "bg-inauspicious/15 text-inauspicious-fg", tone === "warn" && "bg-warn/15 text-warn", className),
+		children
+	});
+}
 function pad(n) {
 	return String(n).padStart(2, "0");
 }
+var JU_HAN = [
+	"一",
+	"二",
+	"三",
+	"四",
+	"五",
+	"六",
+	"七",
+	"八",
+	"九"
+];
 function QueryForm() {
 	const civil = useAppStore((s) => s.civil);
 	const setCivil = useAppStore((s) => s.setCivil);
 	const trueSolar = useAppStore((s) => s.trueSolar);
 	const cityId = useAppStore((s) => s.cityId);
+	const casting = useAppStore((s) => s.casting);
+	const lotsMonth = useAppStore((s) => s.lotsMonth);
+	const lotsJu = useAppStore((s) => s.lotsJu);
 	const mode = useAppStore((s) => s.mode);
 	const setField = useAppStore((s) => s.setField);
+	const setLotsMonth = useAppStore((s) => s.setLotsMonth);
+	const drawLots = useAppStore((s) => s.drawLots);
 	const useNow = useAppStore((s) => s.useNow);
 	const personName = useAppStore((s) => s.personName);
 	const gender = useAppStore((s) => s.gender);
@@ -1924,29 +2003,142 @@ function QueryForm() {
 	const dateValue = `${civil.year}-${pad(civil.month)}-${pad(civil.day)}`;
 	const timeValue = `${pad(civil.hour)}:${pad(civil.minute)}`;
 	const zhiIdx = hourToZhiIndex(civil.hour);
+	const dunLabel = dunFromSolarMonth(lotsMonth) === "yang" ? "阳遁" : "阴遁";
+	const [shaking, setShaking] = (0, import_react.useState)(false);
+	const [flashJu, setFlashJu] = (0, import_react.useState)(null);
+	const shakeRef = (0, import_react.useRef)(null);
+	(0, import_react.useEffect)(() => {
+		return () => {
+			if (shakeRef.current) window.clearInterval(shakeRef.current);
+		};
+	}, []);
+	const onShake = () => {
+		if (shaking) return;
+		if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			drawLots();
+			return;
+		}
+		setShaking(true);
+		let ticks = 0;
+		shakeRef.current = window.setInterval(() => {
+			ticks += 1;
+			setFlashJu(1 + Math.floor(Math.random() * 9));
+			if (ticks >= 8) {
+				if (shakeRef.current) window.clearInterval(shakeRef.current);
+				shakeRef.current = null;
+				setShaking(false);
+				setFlashJu(null);
+				drawLots();
+			}
+		}, 70);
+	};
+	const shownJu = flashJu ?? lotsJu;
+	const isLots = casting === "lots";
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("section", {
 		className: "rounded-xl border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-5",
 		children: [
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-				className: "flex flex-wrap items-center justify-between gap-3",
-				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
-					className: "font-display text-sm text-fg",
-					children: "起盘"
-				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
-					className: "mt-0.5 text-xs text-muted",
-					children: "时间用北京时间。时辰一换，盘面与权重即变。"
-				})] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
-					className: "flex rounded-md border border-border bg-elevated p-0.5",
-					children: [["scan", "全盘扫描"], ["ask", "定向问事"]].map(([id, label]) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
-						type: "button",
-						onClick: () => setField("mode", id),
-						className: cn("h-10 rounded-sm px-3 text-sm transition-colors", mode === id ? "bg-primary text-primary-fg" : "text-muted hover:text-fg"),
-						children: label
-					}, id))
+				className: "flex flex-col gap-3",
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+					className: "flex flex-wrap items-center justify-between gap-3",
+					children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+						className: "font-display text-sm text-fg",
+						children: "起盘"
+					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+						className: "mt-0.5 text-xs text-muted",
+						children: isLots ? "按月定阴阳遁，抽一局为用。时辰仍定值符值使。" : "时间用北京时间。时辰一换，盘面与权重即变。"
+					})] })
+				}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+					className: "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
+					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+						className: "flex rounded-md border border-border bg-elevated p-0.5",
+						children: [["chaibu", "拆补时盘"], ["lots", "求签定局"]].map(([id, label]) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+							type: "button",
+							onClick: () => {
+								setField("casting", id);
+								if (id === "lots") setLotsMonth(civil.month);
+							},
+							className: cn("h-10 rounded-sm px-3 text-sm transition-colors", casting === id ? "bg-primary text-primary-fg" : "text-muted hover:text-fg"),
+							children: label
+						}, id))
+					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+						className: "flex rounded-md border border-border bg-elevated p-0.5",
+						children: [["scan", "全盘扫描"], ["ask", "定向问事"]].map(([id, label]) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+							type: "button",
+							onClick: () => setField("mode", id),
+							className: cn("h-10 rounded-sm px-3 text-sm transition-colors", mode === id ? "bg-primary text-primary-fg" : "text-muted hover:text-fg"),
+							children: label
+						}, id))
+					})]
 				})]
 			}),
+			isLots ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "mt-4 border-t border-border pt-4",
+				children: [
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+						className: "flex flex-wrap items-end justify-between gap-3",
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+							className: "text-xs text-muted",
+							children: "月份定遁"
+						}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
+							className: "mt-1 font-display text-fg",
+							children: [MONTH_NAMES[lotsMonth - 1], /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", {
+								className: "ml-2 text-sm text-muted",
+								children: [dunLabel, " · 12–5月阳遁，6–11月阴遁"]
+							})]
+						})] }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, {
+							type: "button",
+							variant: "secondary",
+							onClick: onShake,
+							disabled: shaking,
+							children: shaking ? "摇签中" : "摇签"
+						})]
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+						className: "mt-3 grid grid-cols-6 gap-1.5 sm:grid-cols-12",
+						children: MONTH_NAMES.map((name, i) => {
+							const m = i + 1;
+							return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: () => setLotsMonth(m),
+								className: cn("h-10 rounded-md border text-xs transition-colors sm:text-sm", lotsMonth === m ? "border-primary bg-primary text-primary-fg" : "border-border bg-elevated text-muted hover:text-fg"),
+								children: m
+							}, name);
+						})
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+						className: "mt-4 flex items-center justify-between gap-2",
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+							className: "text-xs text-muted",
+							children: "抽局 · 选 1–9，或摇签"
+						}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Badge, {
+							tone: "warn",
+							children: [
+								dunLabel,
+								shownJu,
+								"局"
+							]
+						})]
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+						className: "mt-2 grid max-w-md grid-cols-3 gap-1.5",
+						children: JU_HAN.map((han, i) => {
+							const n = i + 1;
+							return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+								type: "button",
+								onClick: () => setField("lotsJu", n),
+								className: cn("flex h-14 items-center justify-center gap-1 rounded-md border font-display text-base transition-colors", shownJu === n ? "border-primary bg-primary text-primary-fg" : "border-border bg-elevated text-muted hover:text-fg"),
+								children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { children: han }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+									className: "text-xs opacity-70",
+									children: "局"
+								})]
+							}, n);
+						})
+					})
+				]
+			}) : null,
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
-				className: "mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4",
+				className: cn("mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4", isLots && "border-t border-border pt-4"),
 				children: [
 					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
 						className: "col-span-2 flex min-h-11 flex-col gap-1 text-xs text-muted sm:col-span-1",
@@ -1955,12 +2147,15 @@ function QueryForm() {
 							value: dateValue,
 							onChange: (e) => {
 								const [y, m, d] = e.target.value.split("-").map(Number);
-								if (y && m && d) setCivil({
-									...civil,
-									year: y,
-									month: m,
-									day: d
-								});
+								if (y && m && d) {
+									setCivil({
+										...civil,
+										year: y,
+										month: m,
+										day: d
+									});
+									if (isLots) setLotsMonth(m);
+								}
 							},
 							className: "h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
 						})]
@@ -1991,7 +2186,10 @@ function QueryForm() {
 							children: "此刻"
 						})
 					}),
-					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
+					isLots ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+						className: "flex items-center text-xs text-muted",
+						children: "时辰定值符，局数用签"
+					}) : /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
 						className: "flex items-center gap-2 text-sm text-fg",
 						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", {
 							type: "checkbox",
@@ -2002,7 +2200,7 @@ function QueryForm() {
 					})
 				]
 			}),
-			trueSolar ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
+			!isLots && trueSolar ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
 				className: "mt-3 flex flex-col gap-1 text-xs text-muted",
 				children: ["城市经度（近似真太阳时，未计均时差）", /* @__PURE__ */ (0, import_jsx_runtime.jsx)("select", {
 					value: cityId,
@@ -2090,12 +2288,6 @@ function QueryForm() {
 				]
 			}) : null
 		]
-	});
-}
-function Badge({ className, tone = "neutral", children }) {
-	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
-		className: cn("inline-flex items-center rounded-sm px-1.5 py-0.5 text-[11px] font-medium tracking-wide", tone === "neutral" && "bg-elevated text-muted", tone === "good" && "bg-auspicious/15 text-auspicious-fg", tone === "bad" && "bg-inauspicious/15 text-inauspicious-fg", tone === "warn" && "bg-warn/15 text-warn", className),
-		children
 	});
 }
 function gateTone(gate) {
@@ -2517,6 +2709,9 @@ function AppShell() {
 	const compute = useAppStore((s) => s.compute);
 	const trueSolar = useAppStore((s) => s.trueSolar);
 	const cityId = useAppStore((s) => s.cityId);
+	const casting = useAppStore((s) => s.casting);
+	const lotsMonth = useAppStore((s) => s.lotsMonth);
+	const lotsJu = useAppStore((s) => s.lotsJu);
 	(0, import_react.useEffect)(() => {
 		const unsub = useAppStore.persist.onFinishHydration(() => {
 			setHydrated(true);
@@ -2544,7 +2739,10 @@ function AppShell() {
 		personName,
 		gender,
 		birthYear,
-		hydrated
+		hydrated,
+		casting,
+		lotsMonth,
+		lotsJu
 	]);
 	const onSelectPalace = (id) => {
 		setField("selectedPalace", selectedPalace === id ? null : id);
@@ -2683,7 +2881,7 @@ function AppShell() {
 				}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 					className: "mt-10 mb-6 text-center text-xs leading-5 text-subtle",
-					children: "拆补法转盘奇门。神应开始、星应过程、门应收局；日时干支刑冲克害合为辅助权重。 本工具将传统盘面结构化为可计算模型，供学习与辅助决策，并非定论。"
+					children: "拆补时盘或求签定局。神应开始、星应过程、门应收局；日时干支刑冲克害合为辅助权重。 求签以月份定阴阳遁、以所选 1–9 为局。供学习与辅助决策，并非定论。"
 				})
 			]
 		})]
