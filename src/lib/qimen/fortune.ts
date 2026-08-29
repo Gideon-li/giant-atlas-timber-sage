@@ -11,7 +11,6 @@ import { GATE_BASE, GOD_BASE, STAR_BASE } from "./calibrated";
 import { detectClassicPatterns, GATE_CLASSIC, STAR_SONG } from "./classic";
 import {
   addCivilDays,
-  getFourPillars,
   hourCivil,
   HOUR_MIDPOINTS,
   hourToZhiIndex,
@@ -19,10 +18,10 @@ import {
   noonCivil,
   yearBoundary,
   yearMonthTerms,
-  yearStemOf,
   type CivilTime,
 } from "./calendar";
-import { buildChart, findStemOnHeaven, palaceOfEarthBranch } from "./chart";
+import { buildChart, palaceOfEarthBranch } from "./chart";
+import { natalFactors, natalView } from "./natal";
 import { ganzhiFlags, luckLevel, probabilityOf, scoreAllEvents } from "./score";
 import type {
   EventScore,
@@ -289,50 +288,12 @@ function periodExtras(
       phase: "aux",
     });
   }
-  const yearStemPalace = findStemOnHeaven(chart, chart.pillars.year.stem);
-  if (yearStemPalace === self && kind === "year") {
-    extra.push({
-      key: "yeargan",
-      label: "年干临值符",
-      detail: `年干${chart.pillars.year.stem}落值符宫，名气、主权较显`,
-      weight: 8,
-      phase: "aux",
-    });
-  }
-  if (opts?.birthYear && kind === "year") {
-    const natal = yearStemOf(opts.birthYear);
-    const natalPillar = getFourPillars({
-      year: opts.birthYear,
-      month: 6,
-      day: 15,
-      hour: 12,
-      minute: 0,
-    }).year;
-    if (natalPillar.branch === yearBr) {
-      extra.push({
-        key: "benming",
-        label: "生肖本命年",
-        detail: `生肖${natalPillar.branch}值年，事多检点，宜守不宜躁进`,
-        weight: -8,
-        phase: "aux",
-      });
-    } else if (BRANCH_CHONG[natalPillar.branch] === yearBr) {
-      extra.push({
-        key: "chongtai",
-        label: "生肖冲太岁",
-        detail: `${natalPillar.branch}冲${yearBr}，一年迁移、争执较多`,
-        weight: -10,
-        phase: "aux",
-      });
-    }
-    if (natal === chart.pillars.year.stem) {
-      extra.push({
-        key: "minggan",
-        label: "命干同岁干",
-        detail: `命干${natal}与岁干同，名气有余，宜防争锋`,
-        weight: -4,
-        phase: "aux",
-      });
+  if (opts?.birthYear) {
+    extra.push(...natalFactors(chart, self, opts.birthYear));
+    const nv = natalView(chart, opts.birthYear);
+    for (const [k, v] of Object.entries(nv.marks)) {
+      const id = Number(k) as PalaceId;
+      marks[id] = marks[id] && marks[id] !== v ? `${marks[id]}/${v}` : v;
     }
   }
   return { extra, marks };

@@ -307,38 +307,38 @@ export function QueryForm() {
 
       <LocationPicker />
 
-      {mode === "ask" ? (
-        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-4">
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            称呼
-            <input
-              value={personName}
-              onChange={(e) => setField("personName", e.target.value)}
-              placeholder="可空"
-              className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none placeholder:text-subtle focus:border-ring"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            性别
-            <select
-              value={gender}
-              onChange={(e) => setField("gender", e.target.value as "male" | "female")}
-              className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
-            >
-              <option value="male">男</option>
-              <option value="female">女</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-muted">
-            出生年（年命）
-            <input
-              inputMode="numeric"
-              value={birthYear}
-              onChange={(e) => setField("birthYear", e.target.value.replace(/[^\d]/g, "").slice(0, 4))}
-              placeholder="如 1992"
-              className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none placeholder:text-subtle focus:border-ring"
-            />
-          </label>
+      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-4">
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          称呼
+          <input
+            value={personName}
+            onChange={(e) => setField("personName", e.target.value)}
+            placeholder="可空"
+            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none placeholder:text-subtle focus:border-ring"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          性别
+          <select
+            value={gender}
+            onChange={(e) => setField("gender", e.target.value as "male" | "female")}
+            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+          >
+            <option value="male">男</option>
+            <option value="female">女</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted">
+          出生年（年命）
+          <input
+            inputMode="numeric"
+            value={birthYear}
+            onChange={(e) => setField("birthYear", e.target.value.replace(/[^\d]/g, "").slice(0, 4))}
+            placeholder="如 1992"
+            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none placeholder:text-subtle focus:border-ring"
+          />
+        </label>
+        {mode === "ask" ? (
           <label className="flex flex-col gap-1 text-xs text-muted">
             所问之事
             <select
@@ -353,8 +353,12 @@ export function QueryForm() {
               ))}
             </select>
           </label>
-        </div>
-      ) : null}
+        ) : (
+          <p className="flex items-end text-xs leading-5 text-muted sm:col-span-1">
+            填写出生年后，全盘扫描另计本命年、冲太岁、命干落宫，不改各事项用神。
+          </p>
+        )}
+      </div>
     </section>
   );
 }

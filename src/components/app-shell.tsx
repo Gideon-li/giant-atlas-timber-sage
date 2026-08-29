@@ -10,8 +10,10 @@ import { FortunePanel } from "@/components/fortune-panel";
 import { useAppStore } from "@/lib/store";
 import { beijingNow } from "@/lib/qimen/calendar";
 import { buildFortunePack } from "@/lib/qimen/fortune";
+import { mergeMarks } from "@/lib/qimen/natal";
 import { cn } from "@/lib/utils";
 import type { PalaceId } from "@/lib/qimen/types";
+import { Badge } from "@/components/ui/badge";
 import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { ensureProfile } from "@/lib/server/app";
@@ -118,7 +120,7 @@ export function AppShell() {
     ],
   );
 
-  const { chart, events, focus, people } = result;
+  const { chart, events, focus, people, natal } = result;
 
   const fortune = useMemo(() => {
     const birth = birthYear.trim() ? Number(birthYear) : null;
@@ -130,7 +132,7 @@ export function AppShell() {
 
   const period = fortune[fortuneScope];
   const boardChart = tab === "fortune" ? period.chart : chart;
-  const boardMarks = tab === "fortune" ? period.marks : undefined;
+  const boardMarks = mergeMarks(tab === "fortune" ? period.marks : {}, natal?.marks ?? {});
   const boardCaption =
     tab === "fortune" ? (fortuneScope === "year" ? "年盘" : fortuneScope === "month" ? "月盘" : "日盘") : "时盘";
 
@@ -270,8 +272,28 @@ export function AppShell() {
             ) : (
               <div className="flex flex-col gap-4">
                 <div>
-                  <h2 className="font-display text-lg text-fg">十二类事项</h2>
-                  <p className="text-xs text-muted">按权重排序。点一项看神星门三段与刑冲克害合。</p>
+                  <h2 className="font-display text-lg text-fg">
+                    {personName.trim() ? `${personName} · ` : ""}
+                    十二类事项
+                  </h2>
+                  {natal ? (
+                    <div className="mt-2 rounded-md border border-border bg-elevated px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        <Badge tone="warn">{natal.pillar.name}</Badge>
+                        {natal.tags.map((t) => (
+                          <Badge key={t} tone={t === "本命年" || t === "冲太岁" ? "bad" : "neutral"}>
+                            {t}
+                          </Badge>
+                        ))}
+                        <Badge>{gender === "male" ? "男" : "女"}</Badge>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-muted">{natal.summary}</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted">
+                      按权重排序。上方可填称呼、性别、出生年；填年命后另计本命年、冲太岁、命干落宫，点一项看神星门三段。
+                    </p>
+                  )}
                 </div>
                 <EventList
                   events={events}

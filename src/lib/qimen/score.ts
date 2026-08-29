@@ -21,10 +21,11 @@ import {
   SCORE_SCALE,
 } from "./constants";
 import { GATE_BASE, GOD_BASE, STAR_BASE } from "./calibrated";
-import { changshengOf, wuxingRelation, yearStemOf } from "./calendar";
+import { changshengOf, wuxingRelation } from "./calendar";
 import { detectClassicPatterns } from "./classic";
 import { enrichEventScore } from "./reading";
-import { findPalaceBy, findStemOnHeaven } from "./chart";
+import { findPalaceBy } from "./chart";
+import { natalFactors } from "./natal";
 import type {
   EventId,
   EventScore,
@@ -253,16 +254,10 @@ export function scoreEvent(
   opts?: { gender?: Gender; birthYear?: number | null },
 ): EventScore {
   const def = EVENT_MAP[eventId];
-  let palaceId: PalaceId =
+  const palaceId: PalaceId =
     def.yongShen === "zhifu"
       ? chart.meta.zhiFuPalace
       : findPalaceBy(chart, def.yongShen, def.target);
-  if (opts?.birthYear) {
-    const ys = yearStemOf(opts.birthYear);
-    if (eventId === "job" || eventId === "career" || eventId === "health") {
-      palaceId = findStemOnHeaven(chart, ys);
-    }
-  }
   const palace = chart.palaces[palaceId];
   const factors: ScoreFactor[] = [];
 
@@ -381,6 +376,10 @@ export function scoreEvent(
         phase: "aux",
       });
     }
+  }
+
+  if (opts?.birthYear) {
+    factors.push(...natalFactors(chart, palaceId, opts.birthYear));
   }
 
   const start = factors.filter((f) => f.phase === "start").reduce((s, f) => s + f.weight, 0);

@@ -5,6 +5,7 @@ import { digitRootToJu } from "@/lib/qimen/classic";
 import { CITIES, EVENTS } from "@/lib/qimen/constants";
 import { buildChart } from "@/lib/qimen/chart";
 import { peopleRelations, scoreAllEvents, scoreEvent } from "@/lib/qimen/score";
+import { natalView, type NatalView } from "@/lib/qimen/natal";
 import type { FortuneKind } from "@/lib/qimen/fortune";
 import { areasOf, citiesOf, DEFAULT_LOCATION, locationLng, provinces } from "@/lib/qimen/china";
 import type { EventId, EventScore, Gender, PalaceId, PeopleLink, QimenChart } from "@/lib/qimen/types";
@@ -52,6 +53,7 @@ type AppStore = QueryState & {
     events: EventScore[];
     focus: EventScore;
     people: PeopleLink[];
+    natal: NatalView | null;
   };
 };
 
@@ -143,7 +145,8 @@ export const useAppStore = create<AppStore>()(
         const events = scoreAllEvents(chart, opts);
         const focus = scoreEvent(chart, s.eventId, opts);
         const people = peopleRelations(chart, s.gender);
-        return { chart, events, focus, people };
+        const natal = opts.birthYear ? natalView(chart, opts.birthYear) : null;
+        return { chart, events, focus, people, natal };
       },
     }),
     {
