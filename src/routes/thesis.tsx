@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { PAPER_MD, PAPER_TITLE } from "@/lib/thesis/paper";
 import { downloadThesisDocx } from "@/lib/thesis/docx";
+import { EVENT_MODEL_SPEC } from "@/lib/thesis/event-spec";
 import { REGIONS_PACK, TRAINED_WEIGHTS } from "@/lib/qimen/weather-model";
 import { Button } from "@/components/ui/button";
 import { RedirectToSignIn } from "@/lib/auth/gates";
@@ -35,6 +36,13 @@ function ThesisPage() {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "weather-weights-2020-2026.json";
+    a.click();
+  };
+  const downloadEventModel = () => {
+    const blob = new Blob([JSON.stringify(EVENT_MODEL_SPEC, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "qimen-event-daily-model.json";
     a.click();
   };
 
@@ -79,6 +87,9 @@ function ThesisPage() {
             <Button type="button" variant="secondary" size="sm" onClick={downloadWeights}>
               下载十二区权重
             </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={downloadEventModel}>
+              下载事项模型
+            </Button>
             <Button type="button" size="sm" onClick={downloadPaper}>
               下载 Word
             </Button>
@@ -90,7 +101,7 @@ function ThesisPage() {
         <h1 className="mt-2 font-display text-2xl leading-snug text-fg">{PAPER_TITLE}</h1>
         <p className="mt-3 text-xs text-muted">
           {TRAINED_WEIGHTS.nRegions} 气候区 · {TRAINED_WEIGHTS.start} – {TRAINED_WEIGHTS.end} · 总样本{" "}
-          {TRAINED_WEIGHTS.nTotalSamples} · 训练至 {TRAINED_WEIGHTS.trainUntil} · Bernoulli 逻辑回归 + softmax
+          {TRAINED_WEIGHTS.nTotalSamples} · 十二类事项加性评分 · Bernoulli 逻辑回归 + softmax
         </p>
         <div className="thesis-body mt-8 text-sm leading-7 text-fg">{renderMd(PAPER_MD)}</div>
       </article>

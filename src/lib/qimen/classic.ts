@@ -20,7 +20,7 @@ export function digitRootToJu(raw: string): { ju: number; steps: string[]; sourc
 
 export type ClassicPattern = { name: string; weight: number; detail: string };
 
-const STEM_GE: Record<string, { name: string; weight: number; detail: string }> = {
+export const STEM_GE: Record<string, { name: string; weight: number; detail: string }> = {
   甲丙: { name: "青龙反首", weight: 18, detail: "甲加丙，动作无阻，求谋多遂（《烟波钓叟歌》）" },
   丙甲: { name: "飞鸟跌穴", weight: 18, detail: "丙加甲，运用有成，贵人提携" },
   戊丙: { name: "青龙反首", weight: 16, detail: "值符加丙，青龙返首，宜动不宜静" },

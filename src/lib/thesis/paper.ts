@@ -1,6 +1,7 @@
 import weightsJson from "@/lib/qimen/weather-weights.json";
 import { EVENT_CALIBRATION } from "@/lib/qimen/calibrated";
 import { SCORE_SCALE } from "@/lib/qimen/unified";
+import { EVENT_MODEL_SPEC, eventChapters } from "@/lib/thesis/event-spec";
 
 const W = weightsJson as {
   method: string;
@@ -263,7 +264,7 @@ const ouhai = W.regions.find((r) => r.id === "ouhai")!;
 const med = pooledMedianAbs();
 
 export const PAPER_TITLE =
-  "基于拆补法转盘奇门的统一分值模型：2020–2026 中国十二气候区天气逻辑回归校准与事项权重更新";
+  "基于拆补法转盘奇门的统一分值模型：十二类日常事项加性评分与 2020–2026 中国十二气候区天气逻辑回归校准";
 
 export const PAPER_MD = `# ${PAPER_TITLE}
 
@@ -283,17 +284,17 @@ export const PAPER_MD = `# ${PAPER_TITLE}
 
 ## 摘要
 
-本文将时家奇门遁甲拆补法转盘排盘，改写为与事项预测相同的加性分值模型。人事与天气共用
+本文将时家奇门遁甲拆补法转盘排盘，改写为事项与天气共用的加性分值模型。人事十二类（求财、事业、求职、婚姻、考试、健康、出行、诉讼、合伙、置业、谈判、寻人）与天气共用
 
-\\\\[ P = \\sigma(S/${SCORE_SCALE}),\\quad S = ${SCORE_SCALE}\\,(b + w^{\\top} x) \\\\]
+\\\\[ P = \\sigma(S/${SCORE_SCALE}),\\quad S_{天气} = ${SCORE_SCALE}\\,(b + w^{\\top} x) \\\\]
 
-其中 σ 为 logistic sigmoid，界面百分比落在 4%–96%。天气部分以坎宫为用神，对「当日降水量 ≥ 0.1 mm」做 Bernoulli 逻辑回归，并以三项 softmax 辅助输出晴/阴/雨。特征 31 维：坎宫所临八神、八门、九星的 one-hot，加上阴遁、伏吟、反吟、坎空与年积日正弦余弦。
+事项侧的综合分不是简单相加，而是神始、星中、门终再加辅项后按 0.25 / 0.35 / 0.40 / 0.55 加权（第 8 章给出逐步公式与全部偏置）。天气部分以坎宫为用神，对「当日降水量 ≥ 0.1 mm」做 Bernoulli 逻辑回归，并以三项 softmax 辅助输出晴/阴/雨。特征 31 维：坎宫所临八神、八门、九星的 one-hot，加上阴遁、伏吟、反吟、坎空与年积日正弦余弦。
 
-训练窗口由原先的 2025–2026 延长为 ${W.start} 至 ${W.end}，共 ${W.nDays} 日 × ${W.nRegions} 区 = ${W.nTotalSamples} 条。广州旬检验 ${pct(gz.metrics.xunAccTest)}，海口旬训练 ${pct(hk.metrics.xunAccTrain)}，全国旬准确率均值 ${pct(W.eventCalibration.meanXunAcc)}。事项门星神权重按各特征 |β| 信度与该均值重新分配，符号仍依刘伯温人事吉凶，不把雨势符号抄到求财。十二区全部 w、b 与分值见第 6 章；事项最终权重见第 7 章。
+训练窗口为 ${W.start} 至 ${W.end}，共 ${W.nDays} 日 × ${W.nRegions} 区 = ${W.nTotalSamples} 条。广州旬检验 ${pct(gz.metrics.xunAccTest)}，海口旬训练 ${pct(hk.metrics.xunAccTrain)}，全国旬准确率均值 ${pct(W.eventCalibration.meanXunAcc)}。事项门星神基础分按各特征 |β| 信度与该均值重新分配，符号仍依刘伯温人事吉凶。十二区天气权重见第 6 章；事项基础分改写见第 7 章；十二类事项用神、偏置、格局、人事方位求签与一份完整数值算例见第 8–11 章。
 
-关键词：奇门遁甲；逻辑回归；softmax；统一分值；Open-Meteo；ERA5；十二气候区
+关键词：奇门遁甲；加性分值；十二类事项；逻辑回归；softmax；Open-Meteo；ERA5；十二气候区
 
-Abstract. Event luck and rainfall share one scoring map: S = ${SCORE_SCALE}·logit, P = sigmoid(S/${SCORE_SCALE}). Twelve independent Bernoulli logistic models are trained on Open-Meteo daily series ${W.start} to ${W.end} (${W.nDays.toLocaleString()} days × ${W.nRegions} regions = ${W.nTotalSamples.toLocaleString()} samples), using 2020–2024 for training and 2025–2026 for temporal testing. Gate/star/god bases for human events are rescaled by the absolute weather coefficients and the mean dekadal accuracy, without copying rain signs into career or wealth.
+Abstract. Twelve everyday event classes and rainfall share one scoring map: P = sigmoid(S/${SCORE_SCALE}). Event luck is an additive score on the yong-shen palace (god / star / gate + biases + ganzhi + patterns), mixed with phase weights 0.25/0.35/0.40/0.55. Twelve independent Bernoulli logistic weather models are trained on Open-Meteo daily series ${W.start} to ${W.end} (${W.nDays.toLocaleString()} days × ${W.nRegions} regions = ${W.nTotalSamples.toLocaleString()} samples). Gate/star/god bases are rescaled by weather |β| reliability without copying rain signs into career or wealth. Every coefficient used by the running software is tabulated in this thesis.
 
 ---
 
@@ -302,9 +303,10 @@ Abstract. Event luck and rainfall share one scoring map: S = ${SCORE_SCALE}·log
 ### 1.1 问题
 
 1. 事项吉凶与天气能否写成同一套加性分值，再用同一 sigmoid 变成百分比？
-2. 把训练窗口扩到 2020–2026 后，十二个气候区各自的逻辑回归权重是多少，检验准确率是多少？
-3. 天气 β 如何回头调整八门、九星、八神的人事权重，而不把「雨」误写成「凶」？
-4. 每个权重从古法先验到梯度下降再到四舍五入，中间每一步的数值是什么？
+2. 十二类日常事项各自的用神、偏置、格局权重、阶段加权公式是什么？每一步的数值如何从盘面算到百分比？
+3. 把训练窗口扩到 2020–2026 后，十二个气候区各自的逻辑回归权重是多少，检验准确率是多少？
+4. 天气 β 如何回头调整八门、九星、八神的人事基础分，而不把「雨」误写成「凶」？
+5. 每个权重从古法先验到梯度下降再到四舍五入，中间每一步的数值是什么？
 
 ### 1.2 范围
 
@@ -314,7 +316,7 @@ Abstract. Event luck and rainfall share one scoring map: S = ${SCORE_SCALE}·log
 
 ### 1.3 技术路线
 
-排盘 → 坎宫 31 维 one-hot 与三角特征 → 每区独立逻辑回归学 w、b → S=${SCORE_SCALE}(b+w⊤x) → P=σ(S/${SCORE_SCALE})。事项用神仍按事件取宫，权重改为天气校准后的门星神表。
+排盘 → 事项按用神取宫，神星门+偏置+干支格局加权得 S → P=σ(S/22)。天气：坎宫 31 维 one-hot 与三角特征 → 每区独立逻辑回归学 w、b → S=22(b+w⊤x) → 同一 P。事项基础分改为天气校准后的门星神表。
 
 ---
 
@@ -336,7 +338,7 @@ Abstract. Event luck and rainfall share one scoring map: S = ${SCORE_SCALE}·log
 
 \\\\[ z = b + w^{\\top} x,\\qquad p=\\sigma(z)=\\frac{1}{1+e^{-z}},\\qquad S=${SCORE_SCALE}\\,z \\\\]
 
-于是 P_事项(S) 与 P_有雨(z) 是同一函数：界面都显示 4%–96% 的百分比。分值刻度 ${SCORE_SCALE} 来自事项经验：|S|≈42 约对应大吉/大凶边界，σ(42/22)≈87%。
+于是 P_事项(S) 与 P_有雨(z) 是同一函数：界面都显示 4%–96% 的百分比。分值刻度 ${SCORE_SCALE} 来自事项经验：|S|≈42 约对应大吉/大凶边界，σ(42/22)≈87%。事项 S 的内部构成（用神、偏置、阶段加权 0.25/0.35/0.40/0.55）见第 8–11 章，不是简单的神+星+门四项相加。
 
 x 为 31 维，顺序固定为：${W.featureNames.join("，")}。
 
@@ -479,17 +481,21 @@ ${mdTable(
   ],
 )}
 
-事项百分比仍为 P=σ(S/22)，与天气同一变换。例如求财遇生门 ${EVENT_CALIBRATION.gate["生门"]} 分、死门 ${EVENT_CALIBRATION.gate["死门"]} 分，再加星神与格局辅项后过 sigmoid。
+事项百分比仍为 P=σ(S/22)，与天气同一变换。例如求财遇生门 ${EVENT_CALIBRATION.gate["生门"]} 分、死门 ${EVENT_CALIBRATION.gate["死门"]} 分，再加事项偏置、星神与格局辅项后按第 8 章加权过 sigmoid。
+
+${eventChapters()}
 
 ---
 
-## 第 8 章 结论
+## 第 13 章 结论
 
-1. 事项与天气已统一为 S 与 P=σ(S/22)，界面都以分值与百分比同时给出。
-2. 2020–2026、十二区、${W.nTotalSamples} 条样本上的 L2 逻辑回归权重全部写入本文第 6 章，不再只给瓯海。
-3. 事项门星神已按天气 |β| 信度与全国旬准确率尺度更新，逐步计算见第 7 章。
-4. 旬 90% 只在部分区达到；全国均值 ${pct(W.eventCalibration.meanXunAcc)}，本文不虚报。
-5. 年积日 cos 是最强特征，说明气候学季节项必须显式放入，否则会把夏天的雨算进玄武。
+1. 十二类日常事项与天气已统一为 S 与 P=σ(S/22)，界面都以分值与百分比同时给出。
+2. 事项算法是可加评分而非黑箱：用神取宫、基础分、十二类偏置、干支、长生、月令、格局、阶段权重 0.25/0.35/0.40/0.55 全部在第 8–11 章列表导出，并附一份真实起盘的逐步算例。
+3. 2020–2026、十二区、${W.nTotalSamples} 条样本上的 L2 逻辑回归权重全部写入本文第 6 章。
+4. 事项门星神基础分已按天气 |β| 信度与全国旬准确率尺度更新，逐步计算见第 7 章；偏置 δ 与格局表不随天气改写。
+5. 旬 90% 只在部分区达到；全国均值 ${pct(W.eventCalibration.meanXunAcc)}，本文不虚报。
+6. 年积日 cos 是天气最强特征，说明气候学季节项必须显式放入，否则会把夏天的雨算进玄武。
+7. 人事没有逐日吉凶标签，故事项不能再做一次逻辑回归；天气回归只约束基础分尺度。
 
 ---
 
@@ -532,9 +538,17 @@ ${mdTable(
 - 训练脚本：全批 GD，epochs=${W.ml.epochs}，η=${W.ml.learningRate}，λ=${W.ml.l2}
 - 公式：P = 1/(1+exp(-S/22))，S = 22*(b + w·x)
 - 机器学习：Bernoulli logistic regression + multinomial softmax
-- 事项校准：w_new = round(w_classic × r(|β|) × g(meanXun))，g=${n4(EVENT_CALIBRATION.globalScale)}，meanXun=${n4(W.eventCalibration.meanXunAcc)}
+- 事项公式：S_raw = 0.25 S始 + 0.35 S中 + 0.40 S终 + 0.55 S辅，P = 1/(1+exp(-S/22))
+- 事项模型导出：十二类用神、偏置、格局、算例见第 8–11 章；JSON 字段与 EVENT_MODEL_SPEC 一致（events、bases、patterns、sampleEvents）
+- 人事：S人 = round(clip(0.45(门+星+神)+附加+合冲, −80, 80))
+- 方位：宜门 +16，忌门 −16，再加神星空亡迫墓
+- 求签：数根定局，168→6
 
 ## 附录 B 声明
 
 本文是软件内置研究说明，用于公开训练数据、模型与误差，不构成学位授予，也不构成对具体日期天气或人事的保证。
+
+## 附录 C 事项模型导出字段
+
+EVENT_MODEL_SPEC 含：scoreScale=${EVENT_MODEL_SPEC.scoreScale}；phaseWeights 始/中/终/辅 = ${EVENT_MODEL_SPEC.phaseWeights.start}/${EVENT_MODEL_SPEC.phaseWeights.process}/${EVENT_MODEL_SPEC.phaseWeights.end}/${EVENT_MODEL_SPEC.phaseWeights.aux}；events ${EVENT_MODEL_SPEC.events.length} 类；patterns ${EVENT_MODEL_SPEC.patterns.length} 条；sampleJu「${EVENT_MODEL_SPEC.sampleJu}」。下载的 JSON 与论文表格同一数据源，避免手抄误差。
 `;

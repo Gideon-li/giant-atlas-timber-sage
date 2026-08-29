@@ -16,6 +16,7 @@ import {
 } from "@/lib/server/app";
 import { ADMIN_PHONES } from "@/lib/admin-ids";
 import { downloadThesisDocx } from "@/lib/thesis/docx";
+import { EVENT_MODEL_SPEC } from "@/lib/thesis/event-spec";
 import { Button } from "@/components/ui/button";
 import { TRAINED_WEIGHTS, REGIONS_PACK } from "@/lib/qimen/weather-model";
 
@@ -147,6 +148,14 @@ function AdminInner() {
     a.click();
   };
 
+  const downloadEventModel = () => {
+    const blob = new Blob([JSON.stringify(EVENT_MODEL_SPEC, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "qimen-event-daily-model.json";
+    a.click();
+  };
+
   const onTrain = async () => {
     setBusy(true);
     setErr(null);
@@ -211,7 +220,7 @@ function AdminInner() {
         <section className="rounded-xl border border-border bg-surface p-4">
           <h2 className="font-display text-base">论文与训练数据</h2>
           <p className="mt-1 text-xs text-muted">
-            仅管理员可下载。论文 Word 含十二区完整权重、公式与事项校准过程。数据为 2020–2026 共{" "}
+            仅管理员可下载。论文 Word 含十二类事项完整公式与偏置、十二区天气权重、校准过程。数据为 2020–2026 共{" "}
             {TRAINED_WEIGHTS.nTotalSamples} 条。
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -222,7 +231,10 @@ function AdminInner() {
               下载训练数据
             </Button>
             <Button type="button" variant="secondary" onClick={downloadWeights} disabled={!metrics}>
-              导出权重 JSON
+              导出天气权重
+            </Button>
+            <Button type="button" variant="secondary" onClick={downloadEventModel}>
+              导出事项模型
             </Button>
             <Link
               to="/thesis"
