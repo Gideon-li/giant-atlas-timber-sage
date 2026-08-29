@@ -3,6 +3,7 @@ import type { EventScore, PalaceId, PeopleLink, QimenChart } from "@/lib/qimen/t
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { FeedbackForm } from "@/components/feedback-form";
+import { ComposeBox } from "@/components/consult-panel";
 
 function toneOf(level: string): "good" | "bad" | "warn" | "neutral" {
   if (level.includes("吉")) return "good";
@@ -145,7 +146,7 @@ export function EventDetail({
       {score.associations?.length ? (
         <div className="mt-4 rounded-md border border-border bg-elevated p-3">
           <p className="font-display text-sm text-fg">联想预测</p>
-          <p className="mt-1 text-xs text-subtle">据《奇门遁甲秘笈大全》门星神时象，合理推想可能发生的具体情形，不是实录。</p>
+          <p className="mt-1 text-xs text-subtle">据象征库按吉凶取词，再合《秘笈》门星神时象。不是实录。</p>
           <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm leading-6 text-muted">
             {score.associations.map((a) => (
               <li key={a}>{a}</li>
@@ -155,6 +156,8 @@ export function EventDetail({
           {score.classicCite ? <p className="mt-1 text-xs leading-5 text-subtle">{score.classicCite}</p> : null}
         </div>
       ) : null}
+
+      <ComposeBox chart={chart} score={score} />
 
       <h4 className="mt-5 font-display text-sm text-fg">权重拆解</h4>
       <ul className="mt-2 divide-y divide-border">

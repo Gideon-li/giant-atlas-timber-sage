@@ -11,7 +11,7 @@ import { areasOf, citiesOf, DEFAULT_LOCATION, locationLng, provinces } from "@/l
 import type { EventId, EventScore, Gender, PalaceId, PeopleLink, QimenChart } from "@/lib/qimen/types";
 
 export type Mode = "scan" | "ask";
-export type ViewTab = "board" | "events" | "people" | "directions" | "weather" | "fortune";
+export type ViewTab = "board" | "events" | "people" | "directions" | "weather" | "fortune" | "consult";
 export type Casting = "chaibu" | "lots";
 
 export type QueryState = {

@@ -1,4 +1,5 @@
 import { EVENT_ASSOC_HINT, GATE_CLASSIC, STAR_SONG, type ClassicPattern } from "./classic";
+import { extractSymbolPack } from "./extract";
 import type { EventId, EventScore, LuckLevel, Palace, QimenChart } from "./types";
 
 const HOUR_OMEN: Record<string, Record<string, string>> = {
@@ -108,7 +109,21 @@ export function buildAssociations(
   if (chart.meta.fuYin) items.push("全盘伏吟，本旬宜守旧，改约、搬家、换岗多反复。");
   if (chart.meta.fanYin) items.push("全盘反吟，对面人、对冲地、反向条件忽然出现。");
 
-  return items.slice(0, 6);
+  const pack = extractSymbolPack(chart, palace, eventId, level);
+  for (const line of pack.lines.slice(0, 3)) items.push(line);
+
+  return uniqueKeep(items).slice(0, 8);
+}
+
+function uniqueKeep(xs: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of xs) {
+    if (seen.has(x)) continue;
+    seen.add(x);
+    out.push(x);
+  }
+  return out;
 }
 
 export function composeClassicReading(

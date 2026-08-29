@@ -1,6 +1,6 @@
 import { E as STEM_CHONG, H as weather_weights_default, O as STEM_HE, T as STEM_BASE, a as CHANGSHENG_SCORE, s as EVENTS, u as GATE_ELEMENT, w as STAR_ELEMENT } from "./weather-model-DSA3cxeb.mjs";
-import { I as luckLevel, J as scoreEvent, K as scoreAllEvents, T as buildChart, W as probabilityOf, a as GATE_USES, d as STAR_BASE, n as EVENT_CALIBRATION, o as GOD_BASE, p as STEM_GE, r as GATE_BASE, t as ACTIVITY_META } from "./score-BWCAH8IQ.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/docx-q2aPKf0A.js
+import { J as scoreAllEvents, K as probabilityOf, R as luckLevel, T as buildChart, X as scoreEvent, a as GATE_USES, d as STAR_BASE, n as EVENT_CALIBRATION, o as GOD_BASE, p as STEM_GE, r as GATE_BASE, t as ACTIVITY_META } from "./score-CH7wR16K.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/docx-CHe3PbDC.js
 var district_summary_default = {
 	method: "全国每个区县行政中心经纬度，对 NOAA CPC Unified Gauge 0.5° 日降水做双线性插值，再对该区县自己的 2020–2026 序列独立做 L2 逻辑回归（有雨）与 softmax（晴/阴/雨）。原生分辨率 0.5°，相邻区县序列相关，但每区单独拟合，不共享 w、b。",
 	ml: {

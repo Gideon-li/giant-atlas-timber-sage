@@ -5,3 +5,5 @@ export * from "./chart";
 export * from "./score";
 export * from "./fortune";
 export * from "./natal";
+export * from "./symbols";
+export * from "./extract";

@@ -1,16 +1,9 @@
-import { i as TSS_SERVER_FUNCTION, r as createServerFn } from "./ssr.mjs";
+import { r as createServerFn } from "./ssr.mjs";
 import { L as getTrainedWeather, P as authMiddleware, R as listRegionMetrics, V as serializeWeights } from "./weather-model-DSA3cxeb.mjs";
 import { n as isAdminIdentity, t as ADMIN_PHONES } from "./admin-ids-Dastpfcy.mjs";
 import { r as getSql } from "./db-dqju8xX7.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/app-DnGKz_hg.js
-var createServerRpc = (serverFnMeta, splitImportFn) => {
-	const url = "/_serverFn/" + serverFnMeta.id;
-	return Object.assign(splitImportFn, {
-		url,
-		serverFnMeta,
-		[TSS_SERVER_FUNCTION]: true
-	});
-};
+import { t as createServerRpc } from "./createServerRpc-CcvdN_gc.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/app-BnLnMdeB.js
 async function loadAuthUser(userId) {
 	return (await (await getSql())`
     select id, email, name from "user" where id = ${userId}

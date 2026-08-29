@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Compass, CloudSun, LayoutGrid, MapPin, Users, CalendarRange } from "lucide-react";
+import { Compass, CloudSun, LayoutGrid, MapPin, Users, CalendarRange, Sparkles } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { QueryForm } from "@/components/query-form";
 import { QimenBoard } from "@/components/qimen-board";
@@ -7,6 +7,7 @@ import { EventDetail, EventList, PeoplePanel } from "@/components/event-panel";
 import { DirectionPanel } from "@/components/direction-panel";
 import { WeatherPanel } from "@/components/weather-panel";
 import { FortunePanel } from "@/components/fortune-panel";
+import { ConsultPanel } from "@/components/consult-panel";
 import { useAppStore } from "@/lib/store";
 import { beijingNow } from "@/lib/qimen/calendar";
 import { buildFortunePack } from "@/lib/qimen/fortune";
@@ -148,6 +149,7 @@ export function AppShell() {
     ["people", "人事", Users],
     ["directions", "方位", MapPin],
     ["weather", "天气", CloudSun],
+    ["consult", "智断", Sparkles],
   ] as const;
 
   return (
@@ -187,7 +189,7 @@ export function AppShell() {
         <QueryForm />
 
         <nav
-          className="dock-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-border bg-bg pt-1 lg:hidden"
+          className="dock-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-7 border-t border-border bg-bg pt-1 lg:hidden"
           style={{ paddingBottom: "max(0.35rem, env(safe-area-inset-bottom, 0px))" }}
           aria-label="页面"
         >
@@ -227,6 +229,7 @@ export function AppShell() {
                   ["people", "人事"],
                   ["directions", "方位"],
                   ["weather", "天气"],
+                  ["consult", "智断"],
                 ] as const
               ).map(([id, label]) => (
                 <button
@@ -255,6 +258,8 @@ export function AppShell() {
                 scope={fortuneScope}
                 onScope={(k) => setField("fortuneScope", k)}
               />
+            ) : tab === "consult" ? (
+              <ConsultPanel chart={chart} events={events} focus={focus} />
             ) : mode === "ask" ? (
               <div className="flex flex-col gap-3">
                 <button

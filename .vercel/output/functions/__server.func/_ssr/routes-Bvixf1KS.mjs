@@ -1,12 +1,13 @@
 import { o as __toESM } from "../_runtime.mjs";
 import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
 import { _ as Link, b as require_jsx_runtime } from "../_libs/@tanstack/react-router+[...].mjs";
+import { r as createServerFn } from "./ssr.mjs";
 import { A as WEATHER_CLASSES, B as scoreToPercent, F as extractScoreFeatures, I as factorBreakdown, M as XIONG_MEN, N as ancientWeather, T as STEM_BASE, a as CHANGSHENG_SCORE, h as JI_MEN, m as HOUR_NAMES, n as BRANCH_CHONG, o as CITIES, s as EVENTS, t as BOARD_ORDER, u as GATE_ELEMENT, v as PALACE_META, w as STAR_ELEMENT, z as rainLevel } from "./weather-model-DSA3cxeb.mjs";
-import { A as ganzhiFlags, B as natalView, C as beijingNow, D as digitRootToJu, E as detectClassicPatterns, F as hourToZhiIndex, H as palaceOfEarthBranch, I as luckLevel, J as scoreEvent, K as scoreAllEvents, L as mergeMarks, O as dunFromSolarMonth, P as hourCivil, Q as yearMonthTerms, R as monthBoundary, S as applyTrueSolar, T as buildChart, U as peopleRelations, V as noonCivil, W as probabilityOf, X as useCurrentUserState, Y as submitFeedback, Z as yearBoundary, _ as addCivilDays, c as KIND_LABEL, d as STAR_BASE, f as STAR_SONG, g as UserButton, h as SignedOut, i as GATE_CLASSIC, j as getJuFromLots, k as ensureProfile, l as MONTH_NAMES, m as SignedIn, o as GOD_BASE, q as scoreDirections, r as GATE_BASE, s as HOUR_MIDPOINTS, t as ACTIVITY_META, w as bestDirection, z as natalFactors } from "./score-BWCAH8IQ.mjs";
+import { $ as yearBoundary, A as ensureProfile, B as monthBoundary, C as beijingNow, D as detectClassicPatterns, E as createSsrRpc, G as peopleRelations, H as natalView, I as hourCivil, J as scoreAllEvents, K as probabilityOf, L as hourToZhiIndex, M as ganzhiFlags, N as getJuFromLots, O as digitRootToJu, Q as useCurrentUserState, R as luckLevel, S as applyTrueSolar, T as buildChart, U as noonCivil, V as natalFactors, W as palaceOfEarthBranch, X as scoreEvent, Y as scoreDirections, Z as submitFeedback, _ as addCivilDays, c as KIND_LABEL, d as STAR_BASE, et as yearMonthTerms, f as STAR_SONG, g as UserButton, h as SignedOut, i as GATE_CLASSIC, j as extractSymbolPack, k as dunFromSolarMonth, l as MONTH_NAMES, m as SignedIn, o as GOD_BASE, r as GATE_BASE, s as HOUR_MIDPOINTS, t as ACTIVITY_META, w as bestDirection, z as mergeMarks } from "./score-CH7wR16K.mjs";
 import { n as cn, t as Button } from "./button-Yi4zxPuq.mjs";
-import { a as Compass, c as CalendarRange, i as LayoutGrid, o as CloudSun, r as MapPin, s as ChevronDown, t as Users } from "../_libs/lucide-react.mjs";
+import { a as LayoutGrid, c as ChevronDown, i as MapPin, l as CalendarRange, o as Compass, r as Sparkles, s as CloudSun, t as Users } from "../_libs/lucide-react.mjs";
 import { n as create, t as persist } from "../_libs/zustand.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-BZxxCsdh.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-Bvixf1KS.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var CLIMATE_REGIONS = [
@@ -20637,6 +20638,331 @@ function Field({ label, value, onChange, options }) {
 		})]
 	});
 }
+var composeAssociation = createServerFn({ method: "POST" }).validator((d) => d).handler(createSsrRpc("11ece6034d50e158f69f94251efe632775481398c3e77775e6eb83ff59de5be5"));
+var consultChart = createServerFn({ method: "POST" }).validator((d) => d).handler(createSsrRpc("c3db7672ee45eee46948382584fc267f0f857f91a58e2923fc8af8c3b4878e37"));
+function toneOf$2(level) {
+	if (level.includes("吉")) return "good";
+	if (level.includes("凶")) return "bad";
+	return "warn";
+}
+function SceneCard({ scene }) {
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("article", {
+		className: "rounded-lg border border-border bg-surface p-3 sm:p-4",
+		children: [
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+				className: "text-sm leading-7 text-fg",
+				children: scene.scene || scene.content
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+				className: "fit-phases mt-3",
+				children: [
+					["时间", scene.time],
+					["地点", scene.place],
+					["人物", scene.people]
+				].map(([k, v]) => v ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+					className: "rounded-md border border-border bg-elevated p-2.5",
+					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+						className: "text-[11px] text-subtle",
+						children: k
+					}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+						className: "mt-1 text-xs leading-5 text-fg",
+						children: v
+					})]
+				}, k) : null)
+			}),
+			scene.content ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
+				className: "mt-3 text-sm leading-6 text-muted",
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", {
+					className: "text-fg",
+					children: "事情　"
+				}), scene.content]
+			}) : null,
+			scene.expansion.length ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", {
+				className: "mt-3 list-disc space-y-1 pl-5 text-xs leading-5 text-muted",
+				children: scene.expansion.map((x) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("li", { children: x }, x))
+			}) : null,
+			scene.caution ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+				className: "mt-3 text-xs leading-5 text-subtle",
+				children: scene.caution
+			}) : null
+		]
+	});
+}
+function ComposeBox({ chart, score }) {
+	const personName = useAppStore((s) => s.personName);
+	const gender = useAppStore((s) => s.gender);
+	const province = useAppStore((s) => s.province);
+	const city = useAppStore((s) => s.city);
+	const district = useAppStore((s) => s.district);
+	const [busy, setBusy] = (0, import_react.useState)(false);
+	const [err, setErr] = (0, import_react.useState)(null);
+	const [scene, setScene] = (0, import_react.useState)(null);
+	const pack = (0, import_react.useMemo)(() => extractSymbolPack(chart, chart.palaces[score.palaceId], score.eventId, score.level), [
+		chart,
+		score.palaceId,
+		score.eventId,
+		score.level
+	]);
+	const onCompose = async () => {
+		setBusy(true);
+		setErr(null);
+		try {
+			const r = await composeAssociation({ data: {
+				question: `请就「${score.name}」根据盘面象征库，联想一件最合理的具体事情。`,
+				eventName: score.name,
+				level: score.level,
+				score: score.score,
+				pack: pack.prompt,
+				brief: pack.brief,
+				person: personName.trim() || void 0,
+				gender,
+				location: `${province}${city}${district}`
+			} });
+			if (!r.ok) setErr(r.error);
+			else setScene(r.result);
+		} catch (e) {
+			setErr(e instanceof Error ? e.message : "智断暂时不可用");
+		} finally {
+			setBusy(false);
+		}
+	};
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+		className: "mt-4 rounded-lg border border-border bg-elevated p-3",
+		children: [
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "flex flex-wrap items-center justify-between gap-2",
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+					className: "font-display text-sm text-fg",
+					children: "智断联想"
+				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, {
+					type: "button",
+					size: "sm",
+					onClick: onCompose,
+					disabled: busy,
+					children: busy ? "推演中" : scene ? "再推一象" : "组合成一件事"
+				})]
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+				className: "mt-1 text-[11px] leading-5 text-subtle",
+				children: "先从象征库按吉凶取词，再交给模型组合成相对具体的时间、地点、人物、事情。供学习，并非实录。"
+			}),
+			err ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+				className: "mt-2 text-xs text-inauspicious-fg",
+				children: err
+			}) : null,
+			scene ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+				className: "mt-3",
+				children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SceneCard, { scene })
+			}) : null
+		]
+	});
+}
+function ConsultPanel({ chart, events, focus }) {
+	const personName = useAppStore((s) => s.personName);
+	const gender = useAppStore((s) => s.gender);
+	const eventId = useAppStore((s) => s.eventId);
+	const setField = useAppStore((s) => s.setField);
+	const province = useAppStore((s) => s.province);
+	const city = useAppStore((s) => s.city);
+	const district = useAppStore((s) => s.district);
+	const score = events.find((e) => e.eventId === eventId) ?? focus;
+	const pack = (0, import_react.useMemo)(() => extractSymbolPack(chart, chart.palaces[score.palaceId], score.eventId, score.level), [
+		chart,
+		score.palaceId,
+		score.eventId,
+		score.level
+	]);
+	const [question, setQuestion] = (0, import_react.useState)(`就「${score.name}」可能发生什么具体的事？`);
+	const [busy, setBusy] = (0, import_react.useState)(false);
+	const [err, setErr] = (0, import_react.useState)(null);
+	const [scene, setScene] = (0, import_react.useState)(null);
+	const [chat, setChat] = (0, import_react.useState)([]);
+	const resultRef = (0, import_react.useRef)(null);
+	const loc = `${province}${city}${district}`;
+	(0, import_react.useEffect)(() => {
+		if (scene || chat.length) resultRef.current?.scrollIntoView({
+			behavior: "smooth",
+			block: "nearest"
+		});
+	}, [scene, chat.length]);
+	const onCompose = async () => {
+		setBusy(true);
+		setErr(null);
+		try {
+			const r = await composeAssociation({ data: {
+				question: question.trim() || `请就「${score.name}」联想一件最合理的具体事情。`,
+				eventName: score.name,
+				level: score.level,
+				score: score.score,
+				pack: pack.prompt,
+				brief: pack.brief,
+				person: personName.trim() || void 0,
+				gender,
+				location: loc
+			} });
+			if (!r.ok) setErr(r.error);
+			else setScene(r.result);
+		} catch (e) {
+			setErr(e instanceof Error ? e.message : "智断暂时不可用");
+		} finally {
+			setBusy(false);
+		}
+	};
+	const onAsk = async () => {
+		const q = question.trim();
+		if (!q) return;
+		setBusy(true);
+		setErr(null);
+		const next = [...chat, {
+			role: "user",
+			content: q
+		}];
+		setChat(next);
+		try {
+			const r = await consultChart({ data: {
+				question: q,
+				pack: pack.prompt,
+				brief: pack.brief,
+				history: chat,
+				person: personName.trim() || void 0,
+				location: loc
+			} });
+			if (!r.ok) {
+				setErr(r.error);
+				setChat(chat);
+			} else {
+				setChat([...next, {
+					role: "assistant",
+					content: r.text
+				}]);
+				setQuestion("");
+			}
+		} catch (e) {
+			setErr(e instanceof Error ? e.message : "智断暂时不可用");
+			setChat(chat);
+		} finally {
+			setBusy(false);
+		}
+	};
+	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+		className: "flex flex-col gap-4",
+		children: [
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
+				className: "font-display text-lg text-fg",
+				children: "智断咨询"
+			}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+				className: "text-xs text-muted",
+				children: "先按当前用神宫从象征库抽出人物、地点、事物、时间词，再交给模型组合成一件最合理的事。可追问。供学习，并非定论。"
+			})] }),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "flex flex-wrap items-center gap-2",
+				children: [
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Badge, {
+						tone: toneOf$2(score.level),
+						children: score.name
+					}),
+					/* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Badge, { children: [
+						score.score > 0 ? "+" : "",
+						score.score,
+						" · ",
+						score.level
+					] }),
+					personName.trim() ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Badge, { children: personName.trim() }) : null,
+					/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Badge, {
+						tone: "neutral",
+						children: loc
+					})
+				]
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+					className: "text-xs text-muted",
+					children: "用神宫已提取的符号"
+				}),
+				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
+					className: "mt-2 flex flex-wrap gap-1",
+					children: pack.tokens.map((t) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Badge, {
+						tone: "warn",
+						children: t.name
+					}, `${t.kind}-${t.name}`))
+				}),
+				/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
+					className: "mt-2 text-[11px] leading-5 text-subtle",
+					children: [
+						"人物 ",
+						pack.people.slice(0, 6).join("、"),
+						"　地点 ",
+						pack.places.slice(0, 6).join("、")
+					]
+				})
+			] }),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
+				className: "flex flex-col gap-1 text-xs text-muted",
+				children: ["所问之事", /* @__PURE__ */ (0, import_jsx_runtime.jsx)("select", {
+					value: score.eventId,
+					onChange: (e) => {
+						setField("eventId", e.target.value);
+						const name = EVENTS.find((ev) => ev.id === e.target.value)?.name;
+						if (name) setQuestion(`就「${name}」可能发生什么具体的事？`);
+					},
+					className: "h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring",
+					children: EVENTS.map((ev) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", {
+						value: ev.id,
+						children: ev.name
+					}, ev.id))
+				})]
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", {
+				className: "flex flex-col gap-1 text-xs text-muted",
+				children: ["咨询内容", /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", {
+					value: question,
+					onChange: (e) => setQuestion(e.target.value.slice(0, 400)),
+					rows: 3,
+					className: "w-full rounded-md border border-border bg-elevated px-3 py-2 text-sm text-fg outline-none focus:border-ring",
+					placeholder: "可写具体问题，如：本周回款会不会到、见谁、在何处"
+				})]
+			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "flex flex-wrap gap-2",
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Button, {
+					type: "button",
+					onClick: onCompose,
+					disabled: busy,
+					className: "min-w-0 flex-1",
+					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Sparkles, { className: "size-4" }), busy ? "推演中" : "联想一件具体的事"]
+				}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, {
+					type: "button",
+					variant: "secondary",
+					onClick: onAsk,
+					disabled: busy || !question.trim(),
+					className: "min-w-0 flex-1",
+					children: busy ? "请稍候" : "追问盘面"
+				})]
+			}),
+			err ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+				className: "text-xs text-inauspicious-fg",
+				children: err
+			}) : null,
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				ref: resultRef,
+				className: "flex flex-col gap-3",
+				children: [scene ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SceneCard, { scene }) : null, chat.length ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", {
+					className: "flex flex-col gap-2",
+					children: chat.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("li", {
+						className: cn("rounded-md border px-3 py-2 text-sm leading-6", m.role === "user" ? "border-border bg-elevated text-fg" : "border-border bg-surface text-muted"),
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+							className: "text-[11px] text-subtle",
+							children: m.role === "user" ? "问" : "断"
+						}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+							className: "mt-1 whitespace-pre-wrap",
+							children: m.content
+						})]
+					}, `${m.role}-${i}`))
+				}) : null]
+			})
+		]
+	});
+}
 function toneOf$1(level) {
 	if (level.includes("吉")) return "good";
 	if (level.includes("凶")) return "bad";
@@ -20776,7 +21102,7 @@ function EventDetail({ score, chart, personName }) {
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 						className: "mt-1 text-xs text-subtle",
-						children: "据《奇门遁甲秘笈大全》门星神时象，合理推想可能发生的具体情形，不是实录。"
+						children: "据象征库按吉凶取词，再合《秘笈》门星神时象。不是实录。"
 					}),
 					/* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", {
 						className: "mt-2 list-disc space-y-1.5 pl-5 text-sm leading-6 text-muted",
@@ -20792,6 +21118,10 @@ function EventDetail({ score, chart, personName }) {
 					}) : null
 				]
 			}) : null,
+			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(ComposeBox, {
+				chart,
+				score
+			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", {
 				className: "mt-5 font-display text-sm text-fg",
 				children: "权重拆解"
@@ -22014,6 +22344,11 @@ function AppShell() {
 			"weather",
 			"天气",
 			CloudSun
+		],
+		[
+			"consult",
+			"智断",
+			Sparkles
 		]
 	];
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
@@ -22065,7 +22400,7 @@ function AppShell() {
 			children: [
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)(QueryForm, {}),
 				/* @__PURE__ */ (0, import_jsx_runtime.jsx)("nav", {
-					className: "dock-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-border bg-bg pt-1 lg:hidden",
+					className: "dock-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-7 border-t border-border bg-bg pt-1 lg:hidden",
 					style: { paddingBottom: "max(0.35rem, env(safe-area-inset-bottom, 0px))" },
 					"aria-label": "页面",
 					children: tabs.map(([id, label, Icon]) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
@@ -22098,7 +22433,8 @@ function AppShell() {
 								["fortune", "运势"],
 								["people", "人事"],
 								["directions", "方位"],
-								["weather", "天气"]
+								["weather", "天气"],
+								["consult", "智断"]
 							].map(([id, label]) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
 								type: "button",
 								onClick: () => setField("tab", id),
@@ -22113,6 +22449,10 @@ function AppShell() {
 							pack: fortune,
 							scope: fortuneScope,
 							onScope: (k) => setField("fortuneScope", k)
+						}) : tab === "consult" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ConsultPanel, {
+							chart,
+							events,
+							focus
 						}) : mode === "ask" ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 							className: "flex flex-col gap-3",
 							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", {
