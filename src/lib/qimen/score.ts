@@ -2,15 +2,12 @@ import {
   CHANGSHENG_SCORE,
   EVENT_MAP,
   EVENTS,
-  GATE_BASE,
   GATE_ELEMENT,
-  GOD_BASE,
   JI_GOD,
   JI_MEN,
   PALACE_META,
   RING,
   SAN_QI,
-  STAR_BASE,
   STAR_ELEMENT,
   STEM_BASE,
   STEM_CHONG,
@@ -21,7 +18,9 @@ import {
   BRANCH_CHONG,
   BRANCH_HAI,
   BRANCH_SIX_HE,
+  SCORE_SCALE,
 } from "./constants";
+import { GATE_BASE, GOD_BASE, STAR_BASE } from "./calibrated";
 import { changshengOf, wuxingRelation, yearStemOf } from "./calendar";
 import { detectClassicPatterns } from "./classic";
 import { enrichEventScore } from "./reading";
@@ -55,7 +54,7 @@ export function luckLevel(score: number): LuckLevel {
 }
 
 export function probabilityOf(score: number): number {
-  const p = 1 / (1 + Math.exp(-score / 22));
+  const p = 1 / (1 + Math.exp(-score / SCORE_SCALE));
   return Math.round(clamp(p, 0.04, 0.96) * 100);
 }
 

@@ -115,3 +115,12 @@
     linear-gradient(90deg, color-mix(in oklab, var(--color-fg) 6%, transparent) 1px, transparent 1px);
   background-size: 12px 12px;
 }
+
+.thesis-body .thesis-table th:first-child,
+.thesis-body .thesis-table td:first-child {
+  text-align: left;
+}
+
+.thesis-body .formula {
+  font-family: var(--font-display);
+}

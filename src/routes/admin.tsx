@@ -17,7 +17,7 @@ import {
 import { ADMIN_PHONES } from "@/lib/admin-ids";
 import { downloadThesisDocx } from "@/lib/thesis/docx";
 import { Button } from "@/components/ui/button";
-import { WEATHER_META, REGIONS_PACK } from "@/lib/qimen/weather-model";
+import { TRAINED_WEIGHTS, REGIONS_PACK } from "@/lib/qimen/weather-model";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -72,7 +72,7 @@ function AdminInner() {
     const blob = new Blob([JSON.stringify(REGIONS_PACK, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "weather-regions-2025-2026.json";
+    a.download = "weather-regions-2020-2026.json";
     a.click();
   };
 
@@ -143,7 +143,7 @@ function AdminInner() {
     const blob = new Blob([metrics.weights], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "qimen-weather-weights.json";
+    a.download = "weather-weights-2020-2026.json";
     a.click();
   };
 
@@ -210,7 +210,10 @@ function AdminInner() {
 
         <section className="rounded-xl border border-border bg-surface p-4">
           <h2 className="font-display text-base">论文与训练数据</h2>
-          <p className="mt-1 text-xs text-muted">仅管理员可下载。论文为 Word（.docx），可直接用 Word / WPS 打开。另含瓯海 605 日天气与模型权重。</p>
+          <p className="mt-1 text-xs text-muted">
+            仅管理员可下载。论文 Word 含十二区完整权重、公式与事项校准过程。数据为 2020–2026 共{" "}
+            {TRAINED_WEIGHTS.nTotalSamples} 条。
+          </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button type="button" onClick={downloadPaper}>
               下载论文 Word
@@ -345,7 +348,8 @@ function AdminInner() {
             <div>
               <h2 className="font-display text-sm">天气模型</h2>
               <p className="text-xs text-muted">
-                {WEATHER_META.place} · {WEATHER_META.n} 日 · {WEATHER_META.source}
+                十二气候区 · {TRAINED_WEIGHTS.start}–{TRAINED_WEIGHTS.end} · 总样本 {TRAINED_WEIGHTS.nTotalSamples} ·{" "}
+                {String(TRAINED_WEIGHTS.ml.primary)}
               </p>
             </div>
             <div className="flex gap-2">
@@ -367,6 +371,32 @@ function AdminInner() {
           ) : (
             <p className="mt-3 text-xs text-subtle">读取指标中…</p>
           )}
+          {metrics?.regions?.length ? (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-[11px]">
+                <thead className="text-subtle">
+                  <tr>
+                    {["区", "样本", "有雨检验", "旬检验", "旬≥90%"].map((h) => (
+                      <th key={h} className="border-b border-border py-1.5 pr-3 font-medium">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.regions.map((r) => (
+                    <tr key={r.id} className="border-b border-border/60">
+                      <td className="py-1.5 pr-3">{r.name}</td>
+                      <td className="py-1.5 pr-3 tabular-nums">{r.n}</td>
+                      <td className="py-1.5 pr-3 tabular-nums">{pct(r.rainAccTest)}</td>
+                      <td className="py-1.5 pr-3 tabular-nums">{pct(r.xunAccTest)}</td>
+                      <td className="py-1.5 pr-3">{r.reachedXun90 ? "是" : "否"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
           {metrics?.notes.map((n) => (
             <p key={n} className="mt-2 text-xs leading-5 text-muted">
               {n}

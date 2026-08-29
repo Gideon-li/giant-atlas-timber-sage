@@ -95,7 +95,7 @@ function concat(...parts: Uint8Array[]) {
 }
 
 function xml(s: string) {
-  return s.replaceAll("&", "&").replaceAll("<", "<").replaceAll(">", ">");
+  return s.replace(/&/g, "&" + "amp;").replace(/</g, "&" + "lt;").replace(/>/g, "&" + "gt;");
 }
 
 function run(text: string, opts?: { bold?: boolean; italic?: boolean; font?: string; size?: number; east?: string }) {
@@ -130,15 +130,40 @@ function p(inner: string, extraPr = "") {
 
 function parseBlocks(md: string) {
   const lines = md.replaceAll("\r\n", "\n").split("\n");
-  const blocks: { type: string; text: string }[] = [];
+  const blocks: { type: string; text: string; rows?: string[][] }[] = [];
   let para: string[] = [];
+  let table: string[][] | null = null;
   const flush = () => {
     const t = para.join(" ").trim();
     para = [];
     if (t) blocks.push({ type: "p", text: t });
   };
+  const flushTable = () => {
+    if (!table?.length) {
+      table = null;
+      return;
+    }
+    const rows = table.filter((r) => !r.every((c) => /^[-:]+$/.test(c)));
+    table = null;
+    if (rows.length) blocks.push({ type: "table", text: "", rows });
+  };
+  const isTableLine = (line: string) => {
+    const t = line.trim();
+    return t.startsWith("|") && t.includes("|", 1);
+  };
+  const splitRow = (line: string) => {
+    const t = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+    return t.split("|").map((c) => c.trim());
+  };
   for (const raw of lines) {
     const line = raw.trimEnd();
+    if (isTableLine(line)) {
+      flush();
+      table = table ?? [];
+      table.push(splitRow(line));
+      continue;
+    }
+    if (table) flushTable();
     if (line.startsWith("# ")) {
       flush();
       continue;
@@ -173,6 +198,7 @@ function parseBlocks(md: string) {
     }
     para.push(line.trim());
   }
+  if (table) flushTable();
   flush();
   return blocks;
 }
@@ -188,6 +214,25 @@ function formulaXml(src: string) {
   return p(run(t, { italic: true, size: 24 }), `<w:jc w:val="center"/>`);
 }
 
+function tableXml(rows: string[][]) {
+  if (!rows.length) return "";
+  const cols = Math.max(...rows.map((r) => r.length));
+  const header = rows[0]!;
+  const body = rows.slice(1);
+  const borders = ["top", "left", "bottom", "right", "insideH", "insideV"]
+    .map((k) => `<w:${k} w:val="single" w:sz="4" w:space="0" w:color="666666"/>`)
+    .join("");
+  const cell = (text: string, headerCell: boolean) => {
+    const pr = headerCell ? "<w:b/><w:bCs/>" : "";
+    return `<w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:spacing w:before="20" w:after="20" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:eastAsia="宋体"/><w:sz w:val="16"/><w:szCs w:val="16"/>${pr}</w:rPr><w:t xml:space="preserve">${xml(text)}</w:t></w:r></w:p></w:tc>`;
+  };
+  const tr = (row: string[], headerRow: boolean) => {
+    const cells = Array.from({ length: cols }, (_, i) => cell(row[i] ?? "", headerRow));
+    return `<w:tr>${cells.join("")}</w:tr>`;
+  };
+  return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblBorders>${borders}</w:tblBorders><w:tblLayout w:type="autofit"/><w:tblLook w:val="04A0"/></w:tblPr>${tr(header, true)}${body.map((r) => tr(r, false)).join("")}</w:tbl><w:p><w:pPr><w:spacing w:after="120"/></w:pPr></w:p>`;
+}
+
 function bodyXml(md: string) {
   const chunks: string[] = [];
   chunks.push(
@@ -196,7 +241,7 @@ function bodyXml(md: string) {
   chunks.push(p(run(PAPER_TITLE, { east: "黑体", size: 36, bold: true }), `<w:jc w:val="center"/>`));
   chunks.push(
     p(
-      run("学科：应用统计学 / 中国术数文献的可计算建模    地点：浙江省温州市瓯海区    数据：2025-01-01 至 2026-08-28", {
+      run("学科：应用统计学 / 中国术数文献的可计算建模    中国十二气候区    数据：2020-01-01 至 2026-08-28", {
         size: 21,
       }),
       `<w:jc w:val="center"/>`,
@@ -205,6 +250,10 @@ function bodyXml(md: string) {
   chunks.push(`<w:p><w:pPr><w:spacing w:before="240" w:after="240"/></w:pPr></w:p>`);
 
   for (const b of parseBlocks(md)) {
+    if (b.type === "table" && b.rows) {
+      chunks.push(tableXml(b.rows));
+      continue;
+    }
     const math = b.text.match(/^\\\[([\s\S]+)\\\]$/);
     if (math) {
       chunks.push(formulaXml(math[1]));
@@ -216,10 +265,7 @@ function bodyXml(md: string) {
         const t = split[i].trim();
         if (!t) continue;
         if (i % 2 === 1) chunks.push(formulaXml(t));
-        else
-          chunks.push(
-            p(run(t, { size: 24 }), `<w:ind w:firstLine="480"/>`),
-          );
+        else chunks.push(p(run(t, { size: 24 }), `<w:ind w:firstLine="480"/>`));
       }
       continue;
     }
@@ -289,7 +335,7 @@ const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
   </w:style>
 </w:styles>`;
 
-export const THESIS_DOCX_NAME = "qimen-ouhai-weather-thesis.docx";
+export const THESIS_DOCX_NAME = "qimen-twelve-regions-2020-2026-thesis.docx";
 
 export function thesisDocxBytes(md = PAPER_MD): Uint8Array {
   const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

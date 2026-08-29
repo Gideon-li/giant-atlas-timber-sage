@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getTrainedWeather, serializeWeights } from "@/lib/qimen/weather-model";
+import { getTrainedWeather, listRegionMetrics, serializeWeights } from "@/lib/qimen/weather-model";
 import { ADMIN_PHONES, isAdminIdentity } from "@/lib/admin-ids";
 
 export type Profile = { userId: string; role: "admin" | "user"; email: string; name: string };
@@ -271,7 +271,8 @@ export const runWeatherTraining = createServerFn({ method: "POST" })
       reachedXun90: report.reachedXun90,
       notes: report.notes,
       confusion: report.confusion,
-      weights,
+      weights: JSON.stringify(serializeWeights(report)),
+      regions: listRegionMetrics(),
     };
   });
 
@@ -295,5 +296,6 @@ export const getWeatherMetrics = createServerFn({ method: "GET" })
       notes: report.notes,
       confusion: report.confusion,
       weights: JSON.stringify(serializeWeights(report)),
+      regions: listRegionMetrics(),
     };
   });

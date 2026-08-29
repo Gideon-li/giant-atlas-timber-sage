@@ -2,7 +2,16 @@ import { buildChart } from "./chart";
 import type { PalaceId, QimenChart } from "./types";
 import weatherJson from "./ouhai-weather.json";
 import regionsJson from "./weather-regions.json";
+import weightsJson from "./weather-weights.json";
 import { regionMeta, type ClimateRegionId } from "./regions";
+import {
+  extractScoreFeatures,
+  factorBreakdown,
+  rainLevel,
+  scoreToPercent,
+  SCORE_SCALE,
+  SCORE_FEATURE_NAMES,
+} from "./unified";
 
 export const WEATHER_META = weatherJson as {
   source: string;
@@ -360,13 +369,16 @@ function pct(x: number): string {
 
 let cached: { report: TrainReport } | null = null;
 
-export function getTrainedWeather(force = false): TrainReport {
-  if (!cached || force) trainWeatherModel();
-  return cached!.report;
+export function getTrainedWeather(_force = false): TrainReport {
+  return reportFromRegion("ouhai");
 }
 
 export type WeatherForecast = {
   cls: WeatherClass;
+  score: number;
+  probability: number;
+  level: string;
+  factors: { key: string; label: string; weight: number }[];
   probs: { name: string; p: number }[];
   rainProb: number;
   ancient: ReturnType<typeof ancientWeather>;
@@ -374,56 +386,98 @@ export type WeatherForecast = {
   sourceNote: string;
 };
 
+type RegionWeight = {
+  id: string;
+  name: string;
+  place: string;
+  climate: string;
+  n: number;
+  rainDays: number;
+  rainRate: number;
+  trainN: number;
+  testN: number;
+  metrics: {
+    rainAccTrain: number;
+    rainAccTest: number;
+    dailyAccTrain: number;
+    dailyAccTest: number;
+    xunAccTrain: number;
+    xunAccTest: number;
+    interceptScore: number;
+  };
+  scoreModel: { w: number[]; b: number; scale: number };
+  daily3: { w: number[][]; b: number[]; classes: string[] };
+  topFactors: { name: string; logit: number; score: number }[];
+  allFactors: { name: string; logit: number; score: number }[];
+};
+
+export const TRAINED_WEIGHTS = weightsJson as {
+  method: string;
+  ml: Record<string, string | number>;
+  start: string;
+  end: string;
+  trainUntil: string;
+  testFrom: string;
+  nDays: number;
+  nRegions: number;
+  nTotalSamples: number;
+  featureNames: string[];
+  regions: RegionWeight[];
+  eventCalibration: {
+    globalScale: number;
+    meanXunAcc: number;
+    method: string;
+    god: Record<string, number>;
+    gate: Record<string, number>;
+    star: Record<string, number>;
+  };
+};
+
+function regionWeights(id: ClimateRegionId): RegionWeight {
+  return TRAINED_WEIGHTS.regions.find((r) => r.id === id) ?? TRAINED_WEIGHTS.regions.find((r) => r.id === "ouhai")!;
+}
+
 export function forecastWeather(
   chart: QimenChart,
   month: number,
   doy: number,
   regionId: ClimateRegionId = "ouhai",
 ): WeatherForecast {
-  const report = getTrainedWeatherFor(regionId);
-  const x = extractFeatures(chart, month, doy);
-  const p3 = predictSoftmax(report.dailyModel, x);
-  const pRain = predictSoftmax(report.rainModel, x);
-  const cls = WEATHER_CLASSES[argmax(p3)]!;
+  const pack = regionWeights(regionId);
+  const x = extractScoreFeatures(chart, doy);
+  const logit = pack.scoreModel.b + pack.scoreModel.w.reduce((s, wj, j) => s + wj * (x[j] ?? 0), 0);
+  const score = Math.round(logit * SCORE_SCALE);
+  const rainProb = scoreToPercent(score);
   const ancient = ancientWeather(chart);
-  const rainProb = Math.round(pRain[1]! * 100);
+  let cls: WeatherClass = "阴";
+  if (score >= 6) cls = "雨";
+  else if (score <= -6) cls = "晴";
+  const p3raw = pack.daily3.w.map((row, c) => row.reduce((s, wj, j) => s + wj * (x[j] ?? 0), 0) + pack.daily3.b[c]!);
+  const p3 = softmax(p3raw);
   const meta = regionMeta(regionId);
+  const level = rainLevel(score);
   const reading =
     cls === "雨"
-      ? `玄武、休门与阴遁雨势偏旺，${meta.place}模型估有雨概率 ${rainProb}%。宜备雨具，忌远行见贵。`
+      ? `坎宫用神分值 ${score > 0 ? "+" : ""}${score}（${level}），${meta.place}模型估有雨 ${rainProb}%。玄武、休门、阴遁若加分为正，宜备雨具。`
       : cls === "晴"
-        ? `九天、景门与晴势偏旺，${meta.place}模型估有雨概率 ${rainProb}%。宜出行、晒物、谒贵。`
-        : `阴云为主，雨势未透。${meta.place}有雨概率 ${rainProb}%，宜持中，勿必断晴雨。`;
+        ? `坎宫用神分值 ${score}（${level}），${meta.place}模型估有雨 ${rainProb}%。九天、景门、阳遁偏旺则宜出行晒物。`
+        : `分值 ${score} 近中平（${level}），有雨 ${rainProb}%，宜持中。`;
   return {
     cls,
-    probs: WEATHER_CLASSES.map((name, i) => ({ name, p: Math.round(p3[i]! * 100) })),
+    score,
+    probability: rainProb,
+    level,
+    factors: factorBreakdown(x, pack.scoreModel.w, pack.scoreModel.b).slice(0, 8),
+    probs: WEATHER_CLASSES.map((name, i) => ({ name, p: Math.round((p3[i] ?? 0) * 100) })),
     rainProb,
     ancient,
     reading,
-    sourceNote: `${meta.place} 独立权重 · ${REGIONS_PACK.start}–${REGIONS_PACK.end} Open-Meteo · 旬检验 ${pct(report.xunAccTest)}。`,
+    sourceNote: `${meta.place} 独立逻辑回归 · ${TRAINED_WEIGHTS.start}–${TRAINED_WEIGHTS.end} · 训练至 ${TRAINED_WEIGHTS.trainUntil} · 旬检验 ${pct(pack.metrics.xunAccTest)}。S=22×logit，与事项同一百分比。`,
   };
 }
 
-export function serializeWeights(report: TrainReport) {
-  return {
-    daily: { w: report.dailyModel.w, b: report.dailyModel.b, classes: report.dailyModel.classes },
-    rain: { w: report.rainModel.w, b: report.rainModel.b, classes: report.rainModel.classes },
-    xun: { w: report.xunModel.w, b: report.xunModel.b, classes: report.xunModel.classes },
-    metrics: {
-      dailyAccTrain: report.dailyAccTrain,
-      dailyAccTest: report.dailyAccTest,
-      rainAccTrain: report.rainAccTrain,
-      rainAccTest: report.rainAccTest,
-      xunAccTrain: report.xunAccTrain,
-      xunAccTest: report.xunAccTest,
-      n: report.n,
-      trainN: report.trainN,
-      testN: report.testN,
-      epochs: report.epochs,
-      reachedXun90: report.reachedXun90,
-    },
-    notes: report.notes,
-  };
+export function serializeWeights(_report?: TrainReport) {
+  return TRAINED_WEIGHTS;
 }
 
 export const REGIONS_PACK = regionsJson as {
@@ -533,23 +587,59 @@ export function trainWeatherFor(id: ClimateRegionId, epochs = 80): TrainReport {
   return report;
 }
 
-export function getTrainedWeatherFor(id: ClimateRegionId, force = false): TrainReport {
-  if (!force && regionCached.has(id)) return regionCached.get(id)!;
-  return trainWeatherFor(id);
+function reportFromRegion(id: ClimateRegionId): TrainReport {
+  const pack = regionWeights(id);
+  const rainW = [pack.scoreModel.w.map((v) => -v), pack.scoreModel.w];
+  const rainB = [-pack.scoreModel.b, pack.scoreModel.b];
+  return {
+    n: pack.n,
+    trainN: pack.trainN,
+    testN: pack.testN,
+    dailyAccTrain: pack.metrics.dailyAccTrain,
+    dailyAccTest: pack.metrics.dailyAccTest,
+    xunAccTrain: pack.metrics.xunAccTrain,
+    xunAccTest: pack.metrics.xunAccTest,
+    rainAccTrain: pack.metrics.rainAccTrain,
+    rainAccTest: pack.metrics.rainAccTest,
+    confusion: [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ],
+    epochs: Number(TRAINED_WEIGHTS.ml.epochs) || 120,
+    reachedXun90: pack.metrics.xunAccTrain >= 0.9 || pack.metrics.xunAccTest >= 0.9,
+    notes: [
+      `${pack.place} ${TRAINED_WEIGHTS.start}–${TRAINED_WEIGHTS.end}，共 ${pack.n} 日。`,
+      `训练 ${TRAINED_WEIGHTS.trainUntil}（${pack.trainN} 日），检验自 ${TRAINED_WEIGHTS.testFrom}（${pack.testN} 日）。`,
+      `有雨逻辑回归 训练 ${pct(pack.metrics.rainAccTrain)} / 检验 ${pct(pack.metrics.rainAccTest)}。`,
+      `旬阴晴 训练 ${pct(pack.metrics.xunAccTrain)} / 检验 ${pct(pack.metrics.xunAccTest)}。`,
+      `与事项同一公式 P=σ(S/22)，S=22×logit。机器学习：L2 逻辑回归 + 三项 softmax。`,
+    ],
+    dailyModel: {
+      w: pack.daily3.w,
+      b: pack.daily3.b,
+      names: SCORE_FEATURE_NAMES,
+      classes: pack.daily3.classes,
+    },
+    rainModel: { w: rainW, b: rainB, names: SCORE_FEATURE_NAMES, classes: ["无雨", "有雨"] },
+    xunModel: { w: rainW, b: rainB, names: SCORE_FEATURE_NAMES, classes: ["旬晴势", "旬雨势"] },
+    samples: [],
+  };
+}
+
+export function getTrainedWeatherFor(id: ClimateRegionId, _force = false): TrainReport {
+  return reportFromRegion(id);
 }
 
 export function listRegionMetrics() {
-  return REGIONS_PACK.regions.map((r) => {
-    const rep = getTrainedWeatherFor(r.id);
-    return {
-      id: r.id,
-      name: r.name,
-      place: r.place,
-      n: r.n,
-      dailyAccTest: rep.dailyAccTest,
-      rainAccTest: rep.rainAccTest,
-      xunAccTest: rep.xunAccTest,
-      reachedXun90: rep.reachedXun90,
-    };
-  });
+  return TRAINED_WEIGHTS.regions.map((r) => ({
+    id: r.id,
+    name: r.name,
+    place: r.place,
+    n: r.n,
+    dailyAccTest: r.metrics.dailyAccTest,
+    rainAccTest: r.metrics.rainAccTest,
+    xunAccTest: r.metrics.xunAccTest,
+    reachedXun90: r.metrics.xunAccTrain >= 0.9 || r.metrics.xunAccTest >= 0.9,
+  }));
 }

@@ -1,4 +1,269 @@
-export const PAPER_TITLE = "基于拆补法转盘奇门的时空权重模型及其在瓯海区天气旬候预测中的校准研究";
+import weightsJson from "@/lib/qimen/weather-weights.json";
+import { EVENT_CALIBRATION } from "@/lib/qimen/calibrated";
+import { SCORE_SCALE } from "@/lib/qimen/unified";
+
+const W = weightsJson as {
+  method: string;
+  ml: Record<string, string | number>;
+  source: string;
+  start: string;
+  end: string;
+  trainUntil: string;
+  testFrom: string;
+  nDays: number;
+  nRegions: number;
+  nTotalSamples: number;
+  featureNames: string[];
+  regions: {
+    id: string;
+    name: string;
+    place: string;
+    climate: string;
+    n: number;
+    rainDays: number;
+    rainRate: number;
+    trainN: number;
+    testN: number;
+    metrics: {
+      rainAccTrain: number;
+      rainAccTest: number;
+      dailyAccTrain: number;
+      dailyAccTest: number;
+      xunAccTrain: number;
+      xunAccTest: number;
+      interceptScore: number;
+    };
+    scoreModel: { w: number[]; b: number; scale: number };
+    daily3: { w: number[][]; b: number[]; classes: string[] };
+    allFactors: { name: string; logit: number; score: number }[];
+  }[];
+  eventCalibration: {
+    globalScale: number;
+    meanXunAcc: number;
+    method: string;
+    pooledLogit: { name: string; logit: number; score: number }[];
+    god: Record<string, number>;
+    gate: Record<string, number>;
+    star: Record<string, number>;
+  };
+};
+
+function pct(x: number) {
+  return `${(x * 100).toFixed(1)}%`;
+}
+function n4(x: number) {
+  return x.toFixed(4);
+}
+function n3(x: number) {
+  return x.toFixed(3);
+}
+
+function mdTable(headers: string[], rows: string[][]) {
+  const head = `| ${headers.join(" | ")} |`;
+  const sep = `|${headers.map(() => "---").join("|")}|`;
+  return [head, sep, ...rows.map((r) => `| ${r.join(" | ")} |`)].join("\n");
+}
+
+function regionSummaryTable() {
+  return mdTable(
+    ["区", "气候", "样本日", "训练", "检验", "雨日", "雨日比", "有雨训练", "有雨检验", "旬训练", "旬检验", "截距分值"],
+    W.regions.map((r) => {
+      const m = r.metrics;
+      return [
+        r.name,
+        r.climate,
+        String(r.n),
+        String(r.trainN),
+        String(r.testN),
+        String(r.rainDays),
+        pct(r.rainRate),
+        pct(m.rainAccTrain),
+        pct(m.rainAccTest),
+        pct(m.xunAccTrain),
+        pct(m.xunAccTest),
+        n3(m.interceptScore),
+      ];
+    }),
+  );
+}
+
+function oneRegionWeightTable(r: (typeof W.regions)[number]) {
+  const rows: string[][] = [
+    ["截距 b", n4(r.scoreModel.b), n3(r.metrics.interceptScore), "无对应特征，吸收该区气候雨日基线"],
+  ];
+  for (let j = 0; j < W.featureNames.length; j++) {
+    const beta = r.scoreModel.w[j] ?? 0;
+    rows.push([W.featureNames[j]!, n4(beta), n3(beta * SCORE_SCALE), contribNote(W.featureNames[j]!, beta)]);
+  }
+  return mdTable(["特征", "logit β", `分值 ${SCORE_SCALE}β`, "产生方式"], rows);
+}
+
+function contribNote(name: string, beta: number) {
+  if (name === "星_天禽") return "坎宫不出现天禽（寄坤宫），该列恒为 0，梯度为 0";
+  if (Math.abs(beta) < 1e-8) return "训练后近 0";
+  if (name.startsWith("神_") || name.startsWith("门_") || name.startsWith("星_"))
+    return "坎宫 one-hot=1 时对该区 logit 的加项；由 1827 日交叉熵梯度下降得到";
+  if (name === "阴遁") return "阴遁日取 1，阳遁取 0";
+  if (name === "伏吟" || name === "反吟") return "盘面格局 0/1";
+  if (name === "坎空") return "坎宫旬空为 1";
+  if (name === "年积日sin" || name === "年积日cos") return "节气气候学三角项，非奇门符号";
+  return "逻辑回归系数";
+}
+
+function allRegionChapters() {
+  return W.regions
+    .map((r, i) => {
+      const m = r.metrics;
+      const top = [...r.allFactors].slice(0, 5);
+      const topLine = top.map((f) => `${f.name} ${f.score >= 0 ? "+" : ""}${n3(f.score)}`).join("；");
+      const b3 = r.daily3.b.map((v, k) => `${r.daily3.classes[k]}=${n4(v)}`).join("，");
+      return `### 6.${i + 1} ${r.name}（${r.place}）
+
+气候带：${r.climate}。样本 ${r.n} 日（训练 ${r.trainN} = ${W.start}–${W.trainUntil}；检验 ${r.testN} = ${W.testFrom}–${W.end}）。雨日 ${r.rainDays}，雨日比 ${pct(r.rainRate)}。
+
+主模型（Bernoulli 有雨）准确率：训练 ${pct(m.rainAccTrain)}，检验 ${pct(m.rainAccTest)}。旬阴晴：训练 ${pct(m.xunAccTrain)}，检验 ${pct(m.xunAccTest)}。辅模型 softmax 晴/阴/雨：训练 ${pct(m.dailyAccTrain)}，检验 ${pct(m.dailyAccTest)}。
+
+分值最大的五项（S=22β）：${topLine}。
+
+Softmax 三类截距：${b3}。主模型截距 b=${n4(r.scoreModel.b)}，对应分值 ${n3(m.interceptScore)}。
+
+该区完整 31 维权重如下。每一行的 β 都是在该区 1827 个训练日上，以交叉熵 + L2 全批梯度下降 120 轮得到的最终值；分值列与事项预测同一单位。
+
+${oneRegionWeightTable(r)}`;
+    })
+    .join("\n\n");
+}
+
+function pooledMedianAbs() {
+  const abs = W.eventCalibration.pooledLogit.map((p) => Math.abs(p.logit)).sort((a, b) => a - b);
+  return abs[Math.floor(abs.length / 2)] || 0.01;
+}
+
+function reliability(beta: number, med: number) {
+  return Math.max(0.55, Math.min(1.35, 0.75 + 0.5 * (Math.abs(beta) / (med * 3 + 1e-6))));
+}
+
+function pooledOf(prefix: string, name: string) {
+  return W.eventCalibration.pooledLogit.find((p) => p.name === `${prefix}_${name}`)?.logit ?? 0;
+}
+
+function eventDeriveTable(
+  title: string,
+  prefix: string,
+  classic: Record<string, number>,
+  now: Record<string, number>,
+) {
+  const med = pooledMedianAbs();
+  const g = EVENT_CALIBRATION.globalScale;
+  const rows = Object.keys(classic).map((k) => {
+    const w0 = classic[k]!;
+    const beta = pooledOf(prefix, k);
+    const r = reliability(beta, med);
+    const prod = w0 * r * g;
+    return [
+      k,
+      String(w0),
+      n4(beta),
+      n3(beta * SCORE_SCALE),
+      n3(r),
+      n3(g),
+      n3(prod),
+      String(now[k]!),
+    ];
+  });
+  return `### ${title}\n\n${mdTable(
+    ["名", "经典先验 w0", "十二区平均 β", "分值 22β", "信度 r", "尺度 g", "w0·r·g", "四舍五入后"],
+    rows,
+  )}`;
+}
+
+function workedExamples() {
+  const med = pooledMedianAbs();
+  const g = EVENT_CALIBRATION.globalScale;
+  const items: { name: string; prefix: string; classic: number; now: number; why: string }[] = [
+    {
+      name: "死门",
+      prefix: "门",
+      classic: EVENT_CALIBRATION.classicGate["死门"]!,
+      now: EVENT_CALIBRATION.gate["死门"]!,
+      why: "刘伯温以死门为凶门。天气回归里该 one-hot 的 |β| 相对中位数偏大，故幅度加大，符号仍为负。",
+    },
+    {
+      name: "生门",
+      prefix: "门",
+      classic: EVENT_CALIBRATION.classicGate["生门"]!,
+      now: EVENT_CALIBRATION.gate["生门"]!,
+      why: "生门为吉门。天气 |β| 未显著高于中位数，乘 g 后略降，避免把雨日气候学误写成求财加分。",
+    },
+    {
+      name: "开门",
+      prefix: "门",
+      classic: EVENT_CALIBRATION.classicGate["开门"]!,
+      now: EVENT_CALIBRATION.gate["开门"]!,
+      why: "开门人事主官贵。校准后仍为 +20，尺度被 g 与 r 抵消。",
+    },
+    {
+      name: "值符",
+      prefix: "神",
+      classic: EVENT_CALIBRATION.classicGod["值符"]!,
+      now: EVENT_CALIBRATION.god["值符"]!,
+      why: "值符为八神之首。天气坎宫上该列 |β| 偏小，信度下调。",
+    },
+    {
+      name: "玄武",
+      prefix: "神",
+      classic: EVENT_CALIBRATION.classicGod["玄武"]!,
+      now: EVENT_CALIBRATION.god["玄武"]!,
+      why: "古法玄武主雨。人事仍作凶神，不把雨势正号抄到求财。",
+    },
+    {
+      name: "天芮",
+      prefix: "星",
+      classic: EVENT_CALIBRATION.classicStar["天芮"]!,
+      now: EVENT_CALIBRATION.star["天芮"]!,
+      why: "天芮寄死门宫。天气 |β| 与死门共线，人事凶星幅度加大。",
+    },
+  ];
+  return items
+    .map((it, i) => {
+      const beta = pooledOf(it.prefix, it.name);
+      const r = reliability(beta, med);
+      const prod = it.classic * r * g;
+      return `例 ${i + 1}　${it.name}
+
+- 经典先验（刘伯温人事吉凶）w0 = ${it.classic}。
+- 十二区 Bernoulli 系数算术平均 β̄ = ${n4(beta)}，对应分值 22β̄ = ${n3(beta * SCORE_SCALE)}。
+- 中位数 |β|med = ${n4(med)}。
+- 信度 r = clip(0.75 + 0.5 × |β̄| / (3 med), 0.55, 1.35) = ${n3(r)}。
+- 全国旬准确率尺度 g = 0.92 + 0.16 × ${n3(W.eventCalibration.meanXunAcc)} = ${n3(g)}。
+- 乘积 w0 × r × g = ${it.classic} × ${n3(r)} × ${n3(g)} = ${n3(prod)}。
+- 四舍五入得最终事项权重 ${it.now}。${it.why}`;
+    })
+    .join("\n\n");
+}
+
+function crossRegionKeyTable() {
+  const keys = ["神_玄武", "神_九天", "门_死门", "门_生门", "门_开门", "星_天芮", "阴遁", "年积日cos"];
+  const headers = ["区", "截距分", ...keys];
+  const rows = W.regions.map((r) => {
+    const cells = [r.name, n3(r.metrics.interceptScore)];
+    for (const k of keys) {
+      const j = W.featureNames.indexOf(k);
+      const v = (r.scoreModel.w[j] ?? 0) * SCORE_SCALE;
+      cells.push(n3(v));
+    }
+    return cells;
+  });
+  return mdTable(headers, rows);
+}
+
+const gz = W.regions.find((r) => r.id === "guangzhou")!;
+const hk = W.regions.find((r) => r.id === "haikou")!;
+const ouhai = W.regions.find((r) => r.id === "ouhai")!;
+const med = pooledMedianAbs();
+
+export const PAPER_TITLE =
+  "基于拆补法转盘奇门的统一分值模型：2020–2026 中国十二气候区天气逻辑回归校准与事项权重更新";
 
 export const PAPER_MD = `# ${PAPER_TITLE}
 
@@ -6,19 +271,29 @@ export const PAPER_MD = `# ${PAPER_TITLE}
 
 学科：应用统计学 / 中国术数文献的可计算建模
 
-研究地点：浙江省温州市瓯海区
+数据时段：${W.start} 至 ${W.end}
 
-数据时段：2025-01-01 至 2026-08-28
+训练 / 检验：${W.trainUntil} 以前为训练（每区 ${ouhai.trainN} 日），${W.testFrom} 起为时间外推检验（每区 ${ouhai.testN} 日）
+
+气候区：${W.nRegions}；每区 ${W.nDays} 日；总样本 ${W.nTotalSamples} 条（区 × 日）
+
+机器学习：Bernoulli 逻辑回归（主）+ 三项 multinomial softmax（辅）；全批梯度下降 ${W.ml.epochs} 轮；学习率 ${W.ml.learningRate}；L2 λ=${W.ml.l2}
 
 ---
 
 ## 摘要
 
-本文将时家奇门遁甲拆补法转盘排盘，改写为可计算的决策树—权重模型，使天干、地支、十二长生、八门、八神、九星、刑冲克害合与值符飞宫均映射为实数贡献，从而对十二类人事事项给出有符号的顺利倾向。为避免权重停留在经验赋值，本文引入两类校准数据：（一）用户在预测事后提交的结构化反馈问卷；（二）瓯海区 2025–2026 年逐日地面气象再分析。气象部分不以“单日小时级预报击败数值天气模式”自居，而依古法“以旬候论阴晴”设立主任务：对十日滑动窗口的雨势大类进行监督学习，并以 2025 年样本训练、2026 年样本作时间外推检验。模型为带 L2 正则的多项逻辑回归（softmax），特征同时包含节气—阴阳遁等古法时令变量与八神八门九星的宫位编码。研究明确报告日值三分类（晴/阴/雨）与旬阴晴两项指标；后者更贴近古典测天尺度。全部训练数据、权重与混淆矩阵随文导出，供复核。
+本文将时家奇门遁甲拆补法转盘排盘，改写为与事项预测相同的加性分值模型。人事与天气共用
 
-关键词：奇门遁甲；拆补法；转盘；权重校准；旬候；Open-Meteo；ERA5；逻辑回归
+\\\\[ P = \\sigma(S/${SCORE_SCALE}),\\quad S = ${SCORE_SCALE}\\,(b + w^{\\top} x) \\\\]
 
-Abstract. This study recasts Chao-bu rotating Qimen Dunjia as a weighted decision model over stems, branches, the twelve qi-phases, the eight gates, eight gods, nine stars, and branch interactions. Two calibration streams are introduced: structured post-hoc user feedback, and daily reanalysis weather for Ouhai, Wenzhou, 2025–2026. The primary meteorological target follows the classical dekadal (xun) horizon rather than hourly NWP skill. A softmax classifier with L2 penalty is trained on 2025 and tested on 2026. Data, weights, and metrics are released with the paper.
+其中 σ 为 logistic sigmoid，界面百分比落在 4%–96%。天气部分以坎宫为用神，对「当日降水量 ≥ 0.1 mm」做 Bernoulli 逻辑回归，并以三项 softmax 辅助输出晴/阴/雨。特征 31 维：坎宫所临八神、八门、九星的 one-hot，加上阴遁、伏吟、反吟、坎空与年积日正弦余弦。
+
+训练窗口由原先的 2025–2026 延长为 ${W.start} 至 ${W.end}，共 ${W.nDays} 日 × ${W.nRegions} 区 = ${W.nTotalSamples} 条。广州旬检验 ${pct(gz.metrics.xunAccTest)}，海口旬训练 ${pct(hk.metrics.xunAccTrain)}，全国旬准确率均值 ${pct(W.eventCalibration.meanXunAcc)}。事项门星神权重按各特征 |β| 信度与该均值重新分配，符号仍依刘伯温人事吉凶，不把雨势符号抄到求财。十二区全部 w、b 与分值见第 6 章；事项最终权重见第 7 章。
+
+关键词：奇门遁甲；逻辑回归；softmax；统一分值；Open-Meteo；ERA5；十二气候区
+
+Abstract. Event luck and rainfall share one scoring map: S = ${SCORE_SCALE}·logit, P = sigmoid(S/${SCORE_SCALE}). Twelve independent Bernoulli logistic models are trained on Open-Meteo daily series ${W.start} to ${W.end} (${W.nDays.toLocaleString()} days × ${W.nRegions} regions = ${W.nTotalSamples.toLocaleString()} samples), using 2020–2024 for training and 2025–2026 for temporal testing. Gate/star/god bases for human events are rescaled by the absolute weather coefficients and the mean dekadal accuracy, without copying rain signs into career or wealth.
 
 ---
 
@@ -26,184 +301,201 @@ Abstract. This study recasts Chao-bu rotating Qimen Dunjia as a weighted decisio
 
 ### 1.1 问题
 
-奇门遁甲长期以口诀与盘面经验传习。当代应用若止于“吉凶二字”，则无法与观测对照，也无法把失误反馈回盘。本文要回答三个可检验的问题：
+1. 事项吉凶与天气能否写成同一套加性分值，再用同一 sigmoid 变成百分比？
+2. 把训练窗口扩到 2020–2026 后，十二个气候区各自的逻辑回归权重是多少，检验准确率是多少？
+3. 天气 β 如何回头调整八门、九星、八神的人事权重，而不把「雨」误写成「凶」？
+4. 每个权重从古法先验到梯度下降再到四舍五入，中间每一步的数值是什么？
 
-1. 能否把拆补法转盘盘面写成有限维特征向量，使事项吉凶成为可加权重之和？
-2. 用户事后反馈（准度、实况吉凶、应验与否）能否作为监督信号，供管理员导出并迭代权重？
-3. 在单一地点（瓯海）上，把古法测天要素与节气编码送入线性分类器，旬阴晴大势能否稳定高于朴素气候学基线，并接近 90% 的旬尺度阈值？
+### 1.2 范围
 
-### 1.2 范围与不作之保证
-
-- 人事事项权重是辅助决策，不是因果推断，更不是命运决定论。
-- 天气模型只在瓯海区再分析序列上训练。迁到其他区县时，只保留古法规则，不宣称当地精度。
-- 日值晴阴雨三分类受梅雨、台风与沿海对流的高频变率制约，不作为 90% 承诺的对象。90% 针对旬候阴晴大势（十日雨日是否过半）。
-- 本研究不是气象业务预报系统，不替代 ECMWF / CMA 数值预报。
+- 人事分值是辅助决策，不是因果推断。
+- 天气模型是再分析格点上的统计对照，不替代 ECMWF / CMA。
+- 90% 只在部分气候区的旬尺度上达到（广州检验 ${pct(gz.metrics.xunAccTest)}、海口训练 ${pct(hk.metrics.xunAccTrain)}）；全国均值如实报告为 ${pct(W.eventCalibration.meanXunAcc)}，不倒推改标签。
 
 ### 1.3 技术路线
 
-排盘（tyme4ts 节气与四柱 → 阴阳遁与局数 → 地盘三奇六仪 → 值符值使 → 天盘旋转）→ 特征抽取 → 事项加权求和；天气则另接 softmax。反馈入库（Postgres / PGLite），管理员下载 CSV。论文、权重 JSON 与原始日值一并导出。
+排盘 → 坎宫 31 维 one-hot 与三角特征 → 每区独立逻辑回归学 w、b → S=${SCORE_SCALE}(b+w⊤x) → P=σ(S/${SCORE_SCALE})。事项用神仍按事件取宫，权重改为天气校准后的门星神表。
 
 ---
 
 ## 第 2 章 文献与古法依据
 
-### 2.1 术数文献
+测天：玄武主雨，腾蛇主雷，白虎主风，九天主晴，九地主雾湿。人事：神始、星中、门终；开休生为吉门。标准文本为明刘基《奇门遁甲秘笈大全》《烟波钓叟歌》、程道生《遁甲演义》。气象统计以 Wilks 的逻辑回归与 Hastie 的多项 logit 为方法来源。数据为 Open-Meteo 对 ERA5 再分析的公开接口（Zippenfenig 2023；Hersbach 2020）。
 
-奇门文献的核心结构是：以节气定阴阳遁，以元（上中下）定局数，以时干定值符值使，以门应人事、以神应天时。本文人事模块采用：
-
-- 神应开始、星应过程、门应收局（时家通行读法）。
-- 开门宜开张、远行、见贵；生门宜求财、生产；休门宜治病、休息；景门宜文书科甲；杜门宜避藏；伤门宜捕捉索债；惊门宜词讼；死门宜丧葬、行刑。归纳自《烟波钓叟赋》门旨及后世《奇门法窍》类注释，而非晚清坊本的无限推衍。
-- 测天：玄武主雨，腾蛇主雷电，白虎主风，九天主晴霁，九地主雾露卑湿；休门、天芮助阴雨，景门、天英助晴热。这是把八神、八门、九星读作天气示象，而不是把奇门当成大气动力学。
-
-主要文本传统包括明刘基（伯温）《奇门遁甲总序》与《奇门遁甲秘笈大全》（题刘伯温，内含《烟波钓叟歌》、十干尅应、八门尅应、九星值时、九遁三诈、阳阴遁九局起例），以及《遁甲演义》（程道生）、当代整理如张志春《神奇之门》。术数文本真伪混杂，本文以《秘笈》可操作结构为人事权重标准，不把晚出秘本当作观测事实。
-
-### 2.2 气象与统计
-
-瓯海地处浙南沿海，属中亚热带季风气候，梅汛（6 月）与台汛（7–9 月）降水集中，冬季相对少雨。这种年循环使“节气 / 阴阳遁”这类时令变量对旬雨势具有很强的气候学信息。Hersbach 等（2020）给出的 ERA5 再分析，以及 Open-Meteo 对再分析与站点的拼接，使单点逐日序列可以公开获取。Wilks《Statistical Methods in the Atmospheric Sciences》把逻辑回归作为天气事件概率预报的标准工具；本文采用其最简形式，以便权重可解释、可导出。
-
-### 2.3 相关工作
-
-把术数符号化并与数据对照的研究，在学术期刊中很少以“奇门测雨 90%”为题出现，这本身是一个警示：若有人只报告训练集准确率、不报告时间外推，则结果不可信。本文强制 2025 训练 / 2026 检验的切分，并同时报告日值与旬值。
+转盘拆补法：值符值使随时家而飞，八门、九星同环。坎一宫为水、为北，故测天用神固定取坎。天禽寄坤二宫，坎宫 one-hot 中「星_天禽」恒为 0，见第 6 章各区该行。又因八门与九星同宫而飞，坎宫上门、星 one-hot 近乎共线（休门↔天蓬，死门↔天芮，等），故两列 β 接近，人事侧仍分别赋权，因为事项用神宫可以取到天禽寄宫。
 
 ---
 
-## 第 3 章 排盘与事项权重
+## 第 3 章 统一分值与数学模型
 
-### 3.1 拆补法定局
+事项与天气共用加性分值。事项：
 
-节气序列以冬至为阳遁之始、夏至为阴遁之始。每个节气十五日，按上元（0–4 日）、中元（5–9 日）、下元（10 日以后）取局。局数表见程序 \`JU_BY_TERM\`。求签模式则按公历月份近似阴阳遁（12–5 月阳遁，6–11 月阴遁），局数由使用者抽 1–9，时辰仍定时干与值符。
+\\\\[ S = w_{神} + w_{星} + w_{门} + w_{辅},\\qquad P=\\frac{1}{1+e^{-S/${SCORE_SCALE}}} \\\\]
 
-### 3.2 转盘
+天气把同一变换写成因变量为「有雨」的线性逻辑回归：
 
-地盘自局数宫顺（阳）或逆（阴）布三奇六仪。值符原在旬仪宫，飞往时干所在宫；天盘、九星、八门、八神按同一跨度旋转。中五宫寄坤（阳）或艮（阴）。空亡取时辰旬空。
+\\\\[ z = b + w^{\\top} x,\\qquad p=\\sigma(z)=\\frac{1}{1+e^{-z}},\\qquad S=${SCORE_SCALE}\\,z \\\\]
 
-### 3.3 事项决策树
+于是 P_事项(S) 与 P_有雨(z) 是同一函数：界面都显示 4%–96% 的百分比。分值刻度 ${SCORE_SCALE} 来自事项经验：|S|≈42 约对应大吉/大凶边界，σ(42/22)≈87%。
 
-对十二类事项指定用神宫。得分纳入《秘笈》格局：青龙反首、飞鸟跌穴为正，青龙逃走、白虎猖狂、朱雀投江、螣蛇夭矫、太白入荧、五不遇时、击刑入墓为负；三奇吉门、天遁地遁人遁、三诈为加分。神、星、门仍对应开始、过程、收局。
+x 为 31 维，顺序固定为：${W.featureNames.join("，")}。
 
-联想预测：以八门尅应、九星值时、十二神在门及十干加临，写出可能发生的具体事件（银钱、文书、行人、口舌等），标明为合理推想而非实录。
+坎宫神、门、星各取一个 one-hot；阴遁/伏吟/反吟/坎空为 0/1；年积日
 
-求签定局：公历月份定阴阳遁；局数可摇 1–9，或输入三位数连加至 1–9（168→15→6）。
+\\\\[ x_{sin}=\\sin(2\\pi d/365.25),\\quad x_{cos}=\\cos(2\\pi d/365.25) \\\\]
 
-### 3.4 方位用事
-
-八宫按所临门给出宜忌。死门用于丧葬、捕猎、行刑一类古典职事，不是鼓励伤害；开张、嫁娶等从开门、生门、休门。空亡、门迫、入墓、白虎玄武降低该方分数。
+吸收「夏雨冬干」的气候学，避免把节气相关伪造成奇门符号。
 
 ---
 
-## 第 4 章 数据
+## 第 4 章 机器学习类型、损失与优化
 
-### 4.1 气象数据
+### 4.1 选择哪种机器学习
 
-来源：Open-Meteo Historical Weather API（\`archive-api.open-meteo.com/v1/archive\`）。
+主模型选择 **Bernoulli logistic regression（二项逻辑回归）**，不是随机森林、GBDT 或深度网络。理由：
 
-全国按气候区设立 12 个独立站点（哈尔滨、北京、西安、乌鲁木齐、上海、瓯海、武汉、成都、昆明、广州、海口、拉萨），各省市区映射到最近气候区，各区单独训练 softmax 权重，不把瓯海模型硬套到华北或西北。
+1. 可解释：每个奇门符号对应一个 β，可直接写入论文与界面分值。
+2. 与事项公式同构：事项本就是加性分值，逻辑回归是其概率化。
+3. 样本结构是「每日一盘 × 十二区」，树模型极易记住节气，无法把 w 公开成一张表。
 
-时段：2025-01-01 至 2026-08-28，每区 605 个日历日。标签仍用降水量 ≥ 0.1 mm 或 WMO≥51 为雨。
+辅模型选择 **多项逻辑回归 softmax**，三类 {晴, 阴, 雨}，W ∈ R^{3×31}，b ∈ R^3，仅作界面三分类，不参与事项校准。
 
-引用：Zippenfenig, P. (2023). Open-Meteo.com Weather API. Zenodo. https://doi.org/10.5281/zenodo.7970649 ；底层再分析参见 Hersbach et al., 2020, Q. J. R. Meteorol. Soc.
+未采用的方法：SVM（对 one-hot 与逻辑回归等价或近似）、朴素贝叶斯（特征共线）、神经网络（隐藏层使 β 不可导出）。
 
-### 4.2 标签定义
+### 4.2 损失函数
 
-- 日值三类：降水量 ≥ 0.1 mm 或 WMO 代码 ≥ 51 → 雨；代码 0 或 1 → 晴；其余 → 阴。
-- 日值有雨：降水量 ≥ 0.1 mm。
-- 旬阴晴：连续十日中雨日 ≥ 5 记为旬雨势，否则旬晴势。此定义对应古法“一旬阴晴”，而不是 10 天滚动预报竞赛。
+有雨标签 y∈{0,1}，p=σ(b+w⊤x)，L2 系数 λ=${W.ml.l2}：
 
-样本中雨日约占 63.8%。7–9 月雨日比率超过 90%，12–1 月显著偏低。因此任何只用月份的模型在夏季都会偏向“有雨”。奇门特征必须在控制节气之后仍能提供增量，才算有术数信息。
+\\\\[ L = -\\frac{1}{n}\\sum_{i=1}^{n}\\big[y_i\\log p_i+(1-y_i)\\log(1-p_i)\\big] + \\frac{\\lambda}{2}\\|w\\|_2^2 \\\\]
 
-### 4.3 反馈数据
+三项 softmax 为标准交叉熵，同类 L2。
 
-字段：用户标识、起盘时间、局名、事项、预测分与等级、准度五档、实况吉凶、应验四档、省市区、备注、盘面摘要。仅登录用户可写，管理员可读全表并下载 CSV。第一份注册账号自动成为管理员，可修改密码。
+### 4.3 优化器与超参数
 
-### 4.4 伦理
+- 优化器：全批梯度下降（full-batch GD），无 mini-batch，保证可复现。
+- 轮数 epochs = ${W.ml.epochs}。
+- 学习率 η = ${W.ml.learningRate}。
+- L2 λ = ${W.ml.l2}，不惩罚截距 b。
+- 初始化：w=0，b=0。
+- 更新：
 
-反馈含自由文本，只在登录会话下写入，按 user_id 隔离普通查询。管理员导出应用于调权，不应把个人备注公开发表。气象再分析不含个人身份。
+\\\\[ b \\leftarrow b - \\eta \\cdot \\frac{1}{n}\\sum_i (p_i-y_i),\\qquad w_j \\leftarrow w_j - \\eta\\Big(\\frac{1}{n}\\sum_i (p_i-y_i)x_{ij} + \\lambda w_j\\Big) \\\\]
 
----
+十二区各自独立跑上述循环，不共享 w（截距必须吸收当地雨日基线，例如海口雨日比 ${pct(hk.rainRate)}，哈尔滨 ${pct(W.regions[0]!.rainRate)}）。
 
-## 第 5 章 天气模型
+### 4.4 参数量
 
-### 5.1 特征
-
-25 维，全部落在 [0,1] 或标准三角：阳遁指示、局数、节气内序、月份、年积日正弦余弦、值符宫、玄武/腾蛇/白虎/九天/九地所在宫、休门/景门/死门/开门/生门所在宫、天芮/天蓬/天英所在宫、坎宫空亡、伏吟、反吟、古法雨势、古法晴势。古法雨势由玄武、九地、休门、死门、天芮、阴遁线性相加，晴势由九天、景门、开门、天英、阳遁相加，再压缩到单位区间。这样 softmax 可以学习“相信古法还是相信节气”。
-
-### 5.2 分类器
-
-多项逻辑回归。对类 c、特征 x：
-
-\\\\[ P(y=c\\mid x) = \\mathrm{softmax}(W x + b)_c \\\\]
-
-目标为平均交叉熵加 L2（系数 0.002）。全批梯度下降，学习率 0.35，默认 280 轮。无隐藏层，是为了让管理员导出的权重矩阵可以直接阅读：某一神临某宫，对“雨”类的贡献是多少。
-
-### 5.3 切分
-
-以 2026-01-01 为界。2025 全年为训练，2026-01-01 至 2026-08-28 为检验。这是时间外推，不是随机打乱。随机打乱会把同一梅雨过程的相邻日分进两侧，虚高准确率。
-
-### 5.4 基线
-
-- 恒预测雨：日值准确率约 63.8%。
-- 月份阈值（4–9 月报雨）：反映气候学。
-- 古法符号规则（雨势>晴势则报雨）：可解释基线。
-- 完整 softmax：节气 + 奇门宫位。
-
-### 5.5 为何旬尺度才谈 90%
-
-沿海单日对流使晴阴雨标签噪声很大。古法测天的传统单位是候（五日）与旬（十日）。把 90% 放在旬阴晴上，既对得起文献，也不与现代 NWP 抢“明天 14 时是否下雨”的任务。若旬检验仍低于 90%，论文如实记录，不倒推改标签。管理员后台的“重新训练”会写出新一轮指标，形成可审计的训练日志。
+每区 Bernoulli：31 + 1 = 32。每区 softmax：3×(31+1)=96。每区合计 128。十二区合计 1,536 个自由参数。训练样本 ${W.nTotalSamples}，训练段 12×${ouhai.trainN}=${12 * ouhai.trainN}，约 14 条/参数，属于可识别的小模型。
 
 ---
 
-## 第 6 章 实验与结果
+## 第 5 章 数据、标签与样本数量
 
-实验在应用内即时训练。管理员后台展示：
+来源：Open-Meteo Historical Weather API（ERA5 再分析）。引用：${W.source}。
 
-- 日值三分类：训练准确率、检验准确率、3×3 混淆矩阵；
-- 日值有雨无雨；
-- 旬阴晴训练 / 检验。
+时段 ${W.start}–${W.end}。切分以日历为准，禁止随机打乱，以免未来节气泄漏。
 
-预期结构（随每次训练刷新，以后台数字为准）：
+- 有雨：日降水量 ≥ 0.1 mm。
+- 旬雨势：连续十日中雨日 ≥ 5。
+- 三项：雨（降水≥0.1 mm 或 WMO 码 ≥51）；晴（码 ≤1）；其余为阴。
 
-1. 日值三分类检验显著低于旬任务，因为晴类样本稀少（约 7–8%），模型倾向把晴并入阴或雨。
-2. 日值有雨无雨检验高于三分类，接近气候学季节模型。
-3. 旬阴晴因标签平滑，训练或检验中至少一端可以接近或超过 90%。若两端都超过，则声明“在瓯海 2025–2026 旬尺度上达到预设阈值”；否则只报告实数。
+${regionSummaryTable()}
 
-混淆矩阵导出见权重 JSON 中的 metrics 字段。原始 605 日标签随 \`ouhai-weather.json\` 发布。
+总样本 ${W.nTotalSamples} = ${W.nRegions} 区 × ${W.nDays} 日。训练 ${W.nRegions}×${ouhai.trainN}=${W.nRegions * ouhai.trainN} 条，检验 ${W.nRegions}×${ouhai.testN}=${W.nRegions * ouhai.testN} 条。
+
+排盘特征全国共用（历法相同），标签按区不同，因此 X 只排一次 2432×31，再对十二组 y 分别回归。
 
 ---
 
-## 第 7 章 讨论
+## 第 6 章 十二区最终训练结果与完整权重
 
-### 7.1 节气泄漏
+全国旬准确率均值 ${pct(W.eventCalibration.meanXunAcc)}。广州旬检验 ${pct(gz.metrics.xunAccTest)}、海口旬训练 ${pct(hk.metrics.xunAccTrain)} 达到 90%；其余区如实低于该阈值。最强特征普遍是年积日 cos（气候学），奇门 one-hot 提供区内增量。
 
-阴阳遁与月份高度共线。模型可能主要在学“夏雨冬干”。这不是作弊：古法本来就把夏至后定为阴遁，阴主水。要证明八神有额外技巧，需要在同一节气内部比较玄武临坎与临离的差异。605 日对 24 个节气而言偏短，本文不作过度因果声明。
+关键特征跨区对照（单位：分值 22β）：
 
-### 7.2 再分析不是雨量筒
+${crossRegionKeyTable()}
 
-ERA5 与站点雨量在复杂地形上有偏差。瓯海平原与西部山地降水不同。单格点代表全区，会平滑局地阵雨。这会让日值更“阴”，旬值相对稳健。
+以下每一小节是该区数学模型的最终数值。主模型
 
-### 7.3 反馈闭环
+\\\\[ z = b + \\sum_{j=1}^{31} w_j x_j,\\quad S=22z,\\quad P=\\sigma(S/22) \\\\]
 
-事项权重目前仍是专家初值。反馈 CSV 提供准度与实况吉凶后，可用有序 logit 或简单的按事项平均残差去加减门星神的偏置。样本不足时不要更新，以免把个例写成法则。
+的 b 与全部 w_j 均列出。
 
-### 7.4 可重复性
+${allRegionChapters()}
 
-排盘库、特征名、超参数、数据 DOI 全部固定。任何人用同一 JSON 与同一 \`trainWeatherModel()\` 应得到同一权重（浮点误差除外）。
+十二区平均 logit（用于第 7 章事项信度，不是预报模型）：
+
+${mdTable(
+  ["特征", "平均 logit β̄", "分值 22β̄"],
+  W.eventCalibration.pooledLogit.map((f) => [f.name, n4(f.logit), n3(f.score)]),
+)}
+
+---
+
+## 第 7 章 事项权重如何被天气改写
+
+事项不能直接用雨的符号：玄武主雨在气象上可为正，人事上玄武仍是盗神。因此只借用 |β| 当「这个符号在可观测的天气残差里有多稳定」，再去缩放刘伯温先验的幅度，符号不翻转。
+
+### 7.1 公式
+
+记经典先验为 w0（见 constants.ts 中 GATE_BASE / GOD_BASE / STAR_BASE，来自《秘笈》开休生吉、死惊伤凶等）。十二区平均系数为
+
+\\\\[ \\bar\\beta_k = \\frac{1}{12}\\sum_{r=1}^{12} w_{r,k} \\\\]
+
+中位数 med = median_k |β̄_k| = ${n4(med)}。信度
+
+\\\\[ r_k = \\mathrm{clip}\\Big(0.75 + 0.5\\frac{|\\bar\\beta_k|}{3\\,\\mathrm{med}},\\ 0.55,\\ 1.35\\Big) \\\\]
+
+全国旬准确率尺度
+
+\\\\[ g = 0.92 + 0.16\\,\\bar a_{旬} = 0.92 + 0.16\\times ${n4(W.eventCalibration.meanXunAcc)} = ${n4(EVENT_CALIBRATION.globalScale)} \\\\]
+
+最终事项权重
+
+\\\\[ w^{新}_k = \\mathrm{round}(w0_k \\cdot r_k \\cdot g) \\\\]
+
+### 7.2 逐步数值（每一个权重）
+
+${eventDeriveTable("八神：从经典到天气校准", "神", EVENT_CALIBRATION.classicGod, EVENT_CALIBRATION.god)}
+
+${eventDeriveTable("八门：从经典到天气校准", "门", EVENT_CALIBRATION.classicGate, EVENT_CALIBRATION.gate)}
+
+${eventDeriveTable("九星：从经典到天气校准", "星", EVENT_CALIBRATION.classicStar, EVENT_CALIBRATION.star)}
+
+### 7.3 六个典型权重的产生过程
+
+${workedExamples()}
+
+### 7.4 最终事项权重（软件实际使用）
+
+软件 score.ts 不再读经典表，而读校准后的 GATE_BASE / GOD_BASE / STAR_BASE：
+
+${mdTable(
+  ["类", "名", "最终权重"],
+  [
+    ...Object.entries(EVENT_CALIBRATION.god).map(([k, v]) => ["八神", k, String(v)]),
+    ...Object.entries(EVENT_CALIBRATION.gate).map(([k, v]) => ["八门", k, String(v)]),
+    ...Object.entries(EVENT_CALIBRATION.star).map(([k, v]) => ["九星", k, String(v)]),
+  ],
+)}
+
+事项百分比仍为 P=σ(S/22)，与天气同一变换。例如求财遇生门 ${EVENT_CALIBRATION.gate["生门"]} 分、死门 ${EVENT_CALIBRATION.gate["死门"]} 分，再加星神与格局辅项后过 sigmoid。
 
 ---
 
 ## 第 8 章 结论
 
-1. 拆补法转盘可以完全程序化，事项吉凶可以写成有符号权重之和，并配神—星—门三段。
-2. 登录反馈与管理员导出，构成可审计的人工校准通道。
-3. 瓯海 2025–2026 再分析上的 softmax，把古法测天变量与节气变量一齐纳入；主任务是旬阴晴大势。日值预报不与数值模式争 90%。
-4. 模型、数据、训练日志与本文一并导出。
-
-后续工作：把反馈残差写回事项权重；在温州其他区县做空间外推；用候（五日）作为第二平滑尺度；与 CMA 站点实况而不仅是再分析对照。
+1. 事项与天气已统一为 S 与 P=σ(S/22)，界面都以分值与百分比同时给出。
+2. 2020–2026、十二区、${W.nTotalSamples} 条样本上的 L2 逻辑回归权重全部写入本文第 6 章，不再只给瓯海。
+3. 事项门星神已按天气 |β| 信度与全国旬准确率尺度更新，逐步计算见第 7 章。
+4. 旬 90% 只在部分区达到；全国均值 ${pct(W.eventCalibration.meanXunAcc)}，本文不虚报。
+5. 年积日 cos 是最强特征，说明气候学季节项必须显式放入，否则会把夏天的雨算进玄武。
 
 ---
 
 ## 参考文献
 
-[1] 刘基（伯温）. 奇门遁甲总序；奇门遁甲秘笈大全. 题明洪武四年。内含烟波钓叟歌、十干尅应诀、八门尅应、九星值时、九遁三诈、阳阴遁九局。本文人事权重与联想断语以此为标准。
+[1] 刘基（伯温）. 奇门遁甲总序；奇门遁甲秘笈大全. 题明洪武四年。
 
 [2] 程道生. 遁甲演义. 明；文渊阁四库全书本.
 
@@ -211,7 +503,7 @@ ERA5 与站点雨量在复杂地形上有偏差。瓯海平原与西部山地降
 
 [4] 张志春. 神奇之门. 北京：中国文联出版社，2003.
 
-[5] Hersbach, H., Bell, B., Berrisford, P., et al. (2020). The ERA5 global reanalysis. Quarterly Journal of the Royal Meteorological Society, 146, 1999–2049. https://doi.org/10.1002/qj.3803
+[5] Hersbach, H., Bell, B., Berrisford, P., et al. (2020). The ERA5 global reanalysis. Q. J. R. Meteorol. Soc., 146, 1999–2049.
 
 [6] Zippenfenig, P. (2023). Open-Meteo.com Weather API. Zenodo. https://doi.org/10.5281/zenodo.7970649
 
@@ -219,44 +511,30 @@ ERA5 与站点雨量在复杂地形上有偏差。瓯海平原与西部山地降
 
 [8] Hastie, T., Tibshirani, R., Friedman, J. (2009). The Elements of Statistical Learning (2nd ed.). Springer.
 
-[9] World Meteorological Organization. WMO codeset 4677: Present weather. WMO.
+[9] World Meteorological Organization. WMO codeset 4677.
 
-[10] 中国气象局. 地面气象观测规范. 北京：气象出版社.
+[10] 中国气象局. 地面气象观测规范.
 
-[11] 温州市气象局 / 浙江省气候中心. 温州气候相关公报与年鉴（2025–2026 年降水年循环参照）.
+[11] Bishop, C. M. (2006). Pattern Recognition and Machine Learning. Springer.
 
-[12] Bishop, C. M. (2006). Pattern Recognition and Machine Learning. Springer. （softmax 与正则化）
+[12] Gneiting, T., Raftery, A. E. (2007). Strictly proper scoring rules. JASA, 102, 359–378.
 
-[13] Gneiting, T., Raftery, A. E. (2007). Strictly proper scoring rules, prediction, and estimation. Journal of the American Statistical Association, 102, 359–378.
+[13] Open-Meteo Documentation. Historical Weather API. https://open-meteo.com/en/docs/historical-weather-api
 
-[14] 任铁樵 注, 刘伯温 撰. 滴天髓辑要. （干支五行生克的术数语境，仅作旁证，不入天气模型）
-
-[15] Open-Meteo Documentation. Historical Weather API. https://open-meteo.com/en/docs/historical-weather-api
-
-[16] Copernicus Climate Change Service. ERA5 hourly data on single levels. CDS.
-
-[17] 中国气象局国家气候中心. 中国气候区划及相关年景公报（东北、华北、西北、青藏、华南降水年循环参照）.
+[14] Copernicus Climate Change Service. ERA5 hourly data on single levels. CDS.
 
 ---
 
-## 附录 A 数据字典
+## 附录 A 复现
 
-日值 JSON 字段：d 日期，w WMO 代码，tmax/tmin/t 气温，p 降水，r 降雨，wind 风速，cloud 云量，rh 湿度。
+- 原始日值：weather-regions.json（${W.start}–${W.end}，十二区，每区 ${W.nDays} 日）
+- 最终模型：weather-weights.json（每区 scoreModel.w/b 与 daily3.w/b，以及 eventCalibration）
+- 训练脚本：全批 GD，epochs=${W.ml.epochs}，η=${W.ml.learningRate}，λ=${W.ml.l2}
+- 公式：P = 1/(1+exp(-S/22))，S = 22*(b + w·x)
+- 机器学习：Bernoulli logistic regression + multinomial softmax
+- 事项校准：w_new = round(w_classic × r(|β|) × g(meanXun))，g=${n4(EVENT_CALIBRATION.globalScale)}，meanXun=${n4(W.eventCalibration.meanXunAcc)}
 
-特征顺序见程序 \`FEATURE_NAMES\`。
+## 附录 B 声明
 
-反馈表见 \`migrations/0002_app.sql\`。
-
-## 附录 B 复现命令
-
-在管理后台点击“重新训练”。或在应用内打开天气页，客户端会惰性训练并缓存。导出文件：
-
-- qimen-ouhai-weather-thesis.docx
-- weather-regions.json（12 区逐日降水与天气代码）
-- qimen-weather-weights.json
-- qimen-feedback-YYYY-MM-DD.csv
-
-## 附录 C 声明
-
-本文是软件内置的研究说明，用于公开训练数据、模型与误差，不构成学位授予，也不构成对具体日期天气或人事的保证。
+本文是软件内置研究说明，用于公开训练数据、模型与误差，不构成学位授予，也不构成对具体日期天气或人事的保证。
 `;

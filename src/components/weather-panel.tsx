@@ -49,7 +49,7 @@ export function WeatherPanel({ chart }: { chart: QimenChart }) {
 
       {!fc ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          正在校准「{region.name}」旬候权重…
+          正在载入「{region.name}」权重…
         </p>
       ) : (
         <div className="rounded-lg border border-border bg-surface p-4">
@@ -57,10 +57,18 @@ export function WeatherPanel({ chart }: { chart: QimenChart }) {
             <div>
               <p className="text-xs text-muted">{chart.ju.label}</p>
               <p className="mt-1 font-display text-2xl text-fg">{fc.cls}</p>
+              <p className="mt-1 text-xs text-subtle">{fc.level}</p>
             </div>
-            <Badge tone={fc.cls === "雨" ? "bad" : fc.cls === "晴" ? "good" : "warn"}>
-              有雨 {fc.rainProb}%
-            </Badge>
+            <div className="text-right">
+              <p className="font-display text-2xl tabular-nums text-fg">
+                {fc.score > 0 ? "+" : ""}
+                {fc.score}
+              </p>
+              <p className="text-xs text-muted">有雨倾向 {fc.rainProb}%</p>
+              <Badge tone={fc.cls === "雨" ? "bad" : fc.cls === "晴" ? "good" : "warn"} className="mt-1">
+                {fc.cls}
+              </Badge>
+            </div>
           </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
             {fc.probs.map((p) => (
@@ -71,6 +79,19 @@ export function WeatherPanel({ chart }: { chart: QimenChart }) {
             ))}
           </div>
           <p className="mt-3 text-sm leading-7 text-fg">{fc.reading}</p>
+          {fc.factors?.length ? (
+            <ul className="mt-3 divide-y divide-border">
+              {fc.factors.map((f) => (
+                <li key={f.key} className="flex items-center justify-between py-1.5 text-xs">
+                  <span className="text-muted">{f.label}</span>
+                  <span className="font-mono tabular-nums">
+                    {f.weight > 0 ? "+" : ""}
+                    {f.weight}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <p className="mt-2 text-[11px] text-subtle">
             古法雨势 {fc.ancient.rain} · 晴势 {fc.ancient.sun} · 风 {fc.ancient.wind} · 雷 {fc.ancient.thunder}
           </p>

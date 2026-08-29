@@ -322,6 +322,9 @@ export const CHANGSHENG_SCORE: Record<string, number> = {
   养: 4,
 };
 
+/** 与事项预测共用：P = sigmoid(S / SCORE_SCALE) */
+export const SCORE_SCALE = 22;
+
 export const GATE_BASE: Record<string, number> = {
   生门: 22,
   开门: 20,
