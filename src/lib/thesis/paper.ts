@@ -1,4 +1,5 @@
 import weightsJson from "@/lib/qimen/weather-weights.json";
+import districtSummaryJson from "@/lib/qimen/district-summary.json";
 import { EVENT_CALIBRATION } from "@/lib/qimen/calibrated";
 import { SCORE_SCALE } from "@/lib/qimen/unified";
 import { EVENT_MODEL_SPEC, eventChapters } from "@/lib/thesis/event-spec";
@@ -47,6 +48,51 @@ const W = weightsJson as {
     gate: Record<string, number>;
     star: Record<string, number>;
   };
+};
+
+const D = districtSummaryJson as {
+  method: string;
+  ml: Record<string, string | number>;
+  source: string;
+  start: string;
+  end: string;
+  trainUntil: string;
+  testFrom: string;
+  nDays: number;
+  nTrainDays: number;
+  nTestDays: number;
+  nDistricts: number;
+  nCities: number;
+  nProvinces: number;
+  nCells: number;
+  nTotalSamples: number;
+  featureNames: string[];
+  meanXunAcc: number;
+  meanRainAccTest: number;
+  globalScale: number;
+  pooledLogit: { name: string; logit: number; score: number }[];
+  provinceMetrics: { province: string; n: number; rainAccTest: number; xunAccTest: number; rainRate: number }[];
+  samples: {
+    code: string;
+    name: string;
+    province: string;
+    city: string;
+    lat: number;
+    lng: number;
+    rainDays: number;
+    rainRate: number;
+    metrics: {
+      rainAccTrain: number;
+      rainAccTest: number;
+      dailyAccTrain: number;
+      dailyAccTest: number;
+      xunAccTrain: number;
+      xunAccTest: number;
+      interceptScore: number;
+    };
+    scoreModel: { w: number[]; b: number; scale: number };
+    daily3: { w: number[][]; b: number[]; classes: string[] };
+  }[];
 };
 
 function pct(x: number) {
@@ -118,7 +164,7 @@ function allRegionChapters() {
       const top = [...r.allFactors].slice(0, 5);
       const topLine = top.map((f) => `${f.name} ${f.score >= 0 ? "+" : ""}${n3(f.score)}`).join("；");
       const b3 = r.daily3.b.map((v, k) => `${r.daily3.classes[k]}=${n4(v)}`).join("，");
-      return `### 6.${i + 1} ${r.name}（${r.place}）
+      return `### 6.10.${i + 1} 对照 ${r.name}（${r.place}）
 
 气候带：${r.climate}。样本 ${r.n} 日（训练 ${r.trainN} = ${W.start}–${W.trainUntil}；检验 ${r.testN} = ${W.testFrom}–${W.end}）。雨日 ${r.rainDays}，雨日比 ${pct(r.rainRate)}。
 
@@ -136,7 +182,7 @@ ${oneRegionWeightTable(r)}`;
 }
 
 function pooledMedianAbs() {
-  const abs = W.eventCalibration.pooledLogit.map((p) => Math.abs(p.logit)).sort((a, b) => a - b);
+  const abs = EVENT_CALIBRATION.pooledLogit.map((p) => Math.abs(p.logit)).sort((a, b) => a - b);
   return abs[Math.floor(abs.length / 2)] || 0.01;
 }
 
@@ -145,7 +191,7 @@ function reliability(beta: number, med: number) {
 }
 
 function pooledOf(prefix: string, name: string) {
-  return W.eventCalibration.pooledLogit.find((p) => p.name === `${prefix}_${name}`)?.logit ?? 0;
+  return EVENT_CALIBRATION.pooledLogit.find((p) => p.name === `${prefix}_${name}`)?.logit ?? 0;
 }
 
 function eventDeriveTable(
@@ -173,7 +219,7 @@ function eventDeriveTable(
     ];
   });
   return `### ${title}\n\n${mdTable(
-    ["名", "经典先验 w0", "十二区平均 β", "分值 22β", "信度 r", "尺度 g", "w0·r·g", "四舍五入后"],
+    ["名", "经典先验 w0", "全国区县平均 β", "分值 22β", "信度 r", "尺度 g", "w0·r·g", "四舍五入后"],
     rows,
   )}`;
 }
@@ -233,10 +279,10 @@ function workedExamples() {
       return `例 ${i + 1}　${it.name}
 
 - 经典先验（刘伯温人事吉凶）w0 = ${it.classic}。
-- 十二区 Bernoulli 系数算术平均 β̄ = ${n4(beta)}，对应分值 22β̄ = ${n3(beta * SCORE_SCALE)}。
+- 全国区县 Bernoulli 系数算术平均 β̄ = ${n4(beta)}，对应分值 22β̄ = ${n3(beta * SCORE_SCALE)}。
 - 中位数 |β|med = ${n4(med)}。
 - 信度 r = clip(0.75 + 0.5 × |β̄| / (3 med), 0.55, 1.35) = ${n3(r)}。
-- 全国旬准确率尺度 g = 0.92 + 0.16 × ${n3(W.eventCalibration.meanXunAcc)} = ${n3(g)}。
+- 全国旬准确率尺度 g = 0.92 + 0.16 × ${n3(EVENT_CALIBRATION.meanXunAcc)} = ${n3(g)}。
 - 乘积 w0 × r × g = ${it.classic} × ${n3(r)} × ${n3(g)} = ${n3(prod)}。
 - 四舍五入得最终事项权重 ${it.now}。${it.why}`;
     })
@@ -262,9 +308,52 @@ const gz = W.regions.find((r) => r.id === "guangzhou")!;
 const hk = W.regions.find((r) => r.id === "haikou")!;
 const ouhai = W.regions.find((r) => r.id === "ouhai")!;
 const med = pooledMedianAbs();
+const ouhaiD = D.samples.find((s) => s.code === "330304")!;
+const haidian = D.samples.find((s) => s.code === "110108")!;
+const tianhe = D.samples.find((s) => s.code === "440106")!;
+
+function provinceTable() {
+  return mdTable(
+    ["省", "区县数", "雨日比", "有雨检验", "旬检验"],
+    D.provinceMetrics.map((r) => [
+      r.province,
+      String(r.n),
+      pct(r.rainRate),
+      pct(r.rainAccTest),
+      pct(r.xunAccTest),
+    ]),
+  );
+}
+
+function oneDistrictWeightTable(s: (typeof D.samples)[number]) {
+  const rows: string[][] = [["截距 b", n4(s.scoreModel.b), n3(s.metrics.interceptScore), "吸收该区雨日基线"]];
+  for (let j = 0; j < D.featureNames.length; j++) {
+    const beta = s.scoreModel.w[j] ?? 0;
+    rows.push([D.featureNames[j]!, n4(beta), n3(beta * SCORE_SCALE), contribNote(D.featureNames[j]!, beta)]);
+  }
+  return mdTable(["特征", "logit β", `分值 ${SCORE_SCALE}β`, "产生方式"], rows);
+}
+
+function sampleDistrictChapters() {
+  return D.samples
+    .map((s, i) => {
+      const m = s.metrics;
+      const b3 = s.daily3.b.map((v, k) => `${s.daily3.classes[k]}=${n4(v)}`).join("，");
+      return `### 6.${i + 1} ${s.province}${s.city}${s.name}（${s.code}）
+
+中心 ${s.lat.toFixed(4)}°N ${s.lng.toFixed(4)}°E。样本 ${D.nDays} 日（训练 ${D.nTrainDays} = ${D.start}–${D.trainUntil}；检验 ${D.nTestDays} = ${D.testFrom}–${D.end}）。雨日 ${s.rainDays}，雨日比 ${pct(s.rainRate)}。
+
+主模型有雨准确率：训练 ${pct(m.rainAccTrain)}，检验 ${pct(m.rainAccTest)}。旬阴晴：训练 ${pct(m.xunAccTrain)}，检验 ${pct(m.xunAccTest)}。softmax 晴/阴/雨：训练 ${pct(m.dailyAccTrain)}，检验 ${pct(m.dailyAccTest)}。
+
+Softmax 三类截距：${b3}。主模型截距 b=${n4(s.scoreModel.b)}，对应分值 ${n3(m.interceptScore)}。该区 31 维权重由本区 ${D.nTrainDays} 个训练日交叉熵 + L2 全批梯度下降 ${D.ml.epochs} 轮得到，不与邻区共享。
+
+${oneDistrictWeightTable(s)}`;
+    })
+    .join("\n\n");
+}
 
 export const PAPER_TITLE =
-  "基于拆补法转盘奇门的统一分值模型：十二类日常事项加性评分与 2020–2026 中国十二气候区天气逻辑回归校准";
+  "基于拆补法转盘奇门的统一分值模型：十二类日常事项加性评分与 2020–2026 中国区县天气逻辑回归校准";
 
 export const PAPER_MD = `# ${PAPER_TITLE}
 
@@ -272,13 +361,13 @@ export const PAPER_MD = `# ${PAPER_TITLE}
 
 学科：应用统计学 / 中国术数文献的可计算建模
 
-数据时段：${W.start} 至 ${W.end}
+数据时段：${D.start} 至 ${D.end}
 
-训练 / 检验：${W.trainUntil} 以前为训练（每区 ${ouhai.trainN} 日），${W.testFrom} 起为时间外推检验（每区 ${ouhai.testN} 日）
+训练 / 检验：${D.trainUntil} 以前为训练（每区县 ${D.nTrainDays} 日），${D.testFrom} 起为时间外推检验（每区县 ${D.nTestDays} 日）
 
-气候区：${W.nRegions}；每区 ${W.nDays} 日；总样本 ${W.nTotalSamples} 条（区 × 日）
+区县：${D.nDistricts}；地级回退 ${D.nCities}；省级回退 ${D.nProvinces}；合计 ${D.nCells} 套独立权重；每套 ${D.nDays} 日；总样本 ${D.nTotalSamples.toLocaleString()} 条（区县 × 日）
 
-机器学习：Bernoulli 逻辑回归（主）+ 三项 multinomial softmax（辅）；全批梯度下降 ${W.ml.epochs} 轮；学习率 ${W.ml.learningRate}；L2 λ=${W.ml.l2}
+机器学习：Bernoulli 逻辑回归（主）+ 三项 multinomial softmax（辅）；全批梯度下降 ${D.ml.epochs} 轮（softmax ${80} 轮）；学习率 ${D.ml.learningRate}；L2 λ=${D.ml.l2}
 
 ---
 
@@ -290,11 +379,11 @@ export const PAPER_MD = `# ${PAPER_TITLE}
 
 事项侧的综合分不是简单相加，而是神始、星中、门终再加辅项后按 0.25 / 0.35 / 0.40 / 0.55 加权（第 8 章给出逐步公式与全部偏置）。天气部分以坎宫为用神，对「当日降水量 ≥ 0.1 mm」做 Bernoulli 逻辑回归，并以三项 softmax 辅助输出晴/阴/雨。特征 31 维：坎宫所临八神、八门、九星的 one-hot，加上阴遁、伏吟、反吟、坎空与年积日正弦余弦。
 
-训练窗口为 ${W.start} 至 ${W.end}，共 ${W.nDays} 日 × ${W.nRegions} 区 = ${W.nTotalSamples} 条。广州旬检验 ${pct(gz.metrics.xunAccTest)}，海口旬训练 ${pct(hk.metrics.xunAccTrain)}，全国旬准确率均值 ${pct(W.eventCalibration.meanXunAcc)}。事项门星神基础分按各特征 |β| 信度与该均值重新分配，符号仍依刘伯温人事吉凶。十二区天气权重见第 6 章；事项基础分改写见第 7 章；十二类事项用神、偏置、格局、人事方位求签与一份完整数值算例见第 8–11 章。
+训练窗口为 ${D.start} 至 ${D.end}，共 ${D.nDays} 日 × ${D.nDistricts} 区县 = ${D.nTotalSamples.toLocaleString()} 条。全国旬准确率均值 ${pct(D.meanXunAcc)}，有雨日值检验均值 ${pct(D.meanRainAccTest)}。瓯海旬检验 ${pct(ouhaiD.metrics.xunAccTest)}，海淀旬检验 ${pct(haidian.metrics.xunAccTest)}，天河旬检验 ${pct(tianhe.metrics.xunAccTest)}。事项门星神基础分按全国区县平均 |β| 信度与旬准确率尺度重新分配，符号仍依刘伯温人事吉凶。各省与样例区县权重见第 6 章；十二气候区仅作对照；事项基础分改写见第 7 章；十二类事项用神、偏置、格局、人事方位求签与一份完整数值算例见第 8–11 章。
 
-关键词：奇门遁甲；加性分值；十二类事项；逻辑回归；softmax；Open-Meteo；ERA5；十二气候区
+关键词：奇门遁甲；加性分值；十二类事项；逻辑回归；softmax；NOAA CPC；区县独立训练
 
-Abstract. Twelve everyday event classes and rainfall share one scoring map: P = sigmoid(S/${SCORE_SCALE}). Event luck is an additive score on the yong-shen palace (god / star / gate + biases + ganzhi + patterns), mixed with phase weights 0.25/0.35/0.40/0.55. Twelve independent Bernoulli logistic weather models are trained on Open-Meteo daily series ${W.start} to ${W.end} (${W.nDays.toLocaleString()} days × ${W.nRegions} regions = ${W.nTotalSamples.toLocaleString()} samples). Gate/star/god bases are rescaled by weather |β| reliability without copying rain signs into career or wealth. Every coefficient used by the running software is tabulated in this thesis.
+Abstract. Twelve everyday event classes and rainfall share one scoring map: P = sigmoid(S/${SCORE_SCALE}). Event luck is an additive score on the yong-shen palace (god / star / gate + biases + ganzhi + patterns), mixed with phase weights 0.25/0.35/0.40/0.55. One Bernoulli logistic weather model is trained per China district on NOAA CPC daily precipitation bilinearly interpolated to the administrative centroid, ${D.start} to ${D.end} (${D.nDays.toLocaleString()} days × ${D.nDistricts.toLocaleString()} districts = ${D.nTotalSamples.toLocaleString()} samples). Mean xun-scale accuracy is ${pct(D.meanXunAcc)}; this paper does not claim 90%. Gate/star/god bases are rescaled by nationwide |β| reliability without copying rain signs into career or wealth. Full per-district coefficients are in the accompanying JSON; this thesis tabulates all provinces and eight sample districts.
 
 ---
 
@@ -304,25 +393,25 @@ Abstract. Twelve everyday event classes and rainfall share one scoring map: P = 
 
 1. 事项吉凶与天气能否写成同一套加性分值，再用同一 sigmoid 变成百分比？
 2. 十二类日常事项各自的用神、偏置、格局权重、阶段加权公式是什么？每一步的数值如何从盘面算到百分比？
-3. 把训练窗口扩到 2020–2026 后，十二个气候区各自的逻辑回归权重是多少，检验准确率是多少？
+3. 把训练窗口扩到 2020–2026 后，中国每个省每个市每个区县各自的逻辑回归权重如何产生，检验准确率是多少？
 4. 天气 β 如何回头调整八门、九星、八神的人事基础分，而不把「雨」误写成「凶」？
 5. 每个权重从古法先验到梯度下降再到四舍五入，中间每一步的数值是什么？
 
 ### 1.2 范围
 
 - 人事分值是辅助决策，不是因果推断。
-- 天气模型是再分析格点上的统计对照，不替代 ECMWF / CMA。
-- 90% 只在部分气候区的旬尺度上达到（广州检验 ${pct(gz.metrics.xunAccTest)}、海口训练 ${pct(hk.metrics.xunAccTrain)}）；全国均值如实报告为 ${pct(W.eventCalibration.meanXunAcc)}，不倒推改标签。
+- 天气模型是 CPC 日降水场上的统计对照，不替代 ECMWF / CMA。
+- 全国区县旬准确率均值如实报告为 ${pct(D.meanXunAcc)}，有雨日值检验 ${pct(D.meanRainAccTest)}；不虚报 90%。十二气候区对照中广州旬检验 ${pct(gz.metrics.xunAccTest)}、海口旬训练 ${pct(hk.metrics.xunAccTrain)} 仍可单独查看。
 
 ### 1.3 技术路线
 
-排盘 → 事项按用神取宫，神星门+偏置+干支格局加权得 S → P=σ(S/22)。天气：坎宫 31 维 one-hot 与三角特征 → 每区独立逻辑回归学 w、b → S=22(b+w⊤x) → 同一 P。事项基础分改为天气校准后的门星神表。
+排盘 → 事项按用神取宫，神星门+偏置+干支格局加权得 S → P=σ(S/22)。天气：坎宫 31 维 one-hot 与三角特征（全国共用 X）→ 每个区县用自己的日降水标签 y 独立逻辑回归学 w、b → S=22(b+w⊤x) → 同一 P。事项基础分改为全国区县天气校准后的门星神表。
 
 ---
 
 ## 第 2 章 文献与古法依据
 
-测天：玄武主雨，腾蛇主雷，白虎主风，九天主晴，九地主雾湿。人事：神始、星中、门终；开休生为吉门。标准文本为明刘基《奇门遁甲秘笈大全》《烟波钓叟歌》、程道生《遁甲演义》。气象统计以 Wilks 的逻辑回归与 Hastie 的多项 logit 为方法来源。数据为 Open-Meteo 对 ERA5 再分析的公开接口（Zippenfenig 2023；Hersbach 2020）。
+测天：玄武主雨，腾蛇主雷，白虎主风，九天主晴，九地主雾湿。人事：神始、星中、门终；开休生为吉门。标准文本为明刘基《奇门遁甲秘笈大全》《烟波钓叟歌》、程道生《遁甲演义》。气象统计以 Wilks 的逻辑回归与 Hastie 的多项 logit 为方法来源。区县标签为 NOAA CPC Unified Gauge 全球日降水（Xie 等），按各区行政中心双线性插值；十二气候区对照仍用 Open-Meteo / ERA5。
 
 转盘拆补法：值符值使随时家而飞，八门、九星同环。坎一宫为水、为北，故测天用神固定取坎。天禽寄坤二宫，坎宫 one-hot 中「星_天禽」恒为 0，见第 6 章各区该行。又因八门与九星同宫而飞，坎宫上门、星 one-hot 近乎共线（休门↔天蓬，死门↔天芮，等），故两列 β 接近，人事侧仍分别赋权，因为事项用神宫可以取到天禽寄宫。
 
@@ -383,54 +472,70 @@ x 为 31 维，顺序固定为：${W.featureNames.join("，")}。
 
 \\\\[ b \\leftarrow b - \\eta \\cdot \\frac{1}{n}\\sum_i (p_i-y_i),\\qquad w_j \\leftarrow w_j - \\eta\\Big(\\frac{1}{n}\\sum_i (p_i-y_i)x_{ij} + \\lambda w_j\\Big) \\\\]
 
-十二区各自独立跑上述循环，不共享 w（截距必须吸收当地雨日基线，例如海口雨日比 ${pct(hk.rainRate)}，哈尔滨 ${pct(W.regions[0]!.rainRate)}）。
+十二区各自独立跑上述循环，不共享 w（截距必须吸收当地雨日基线，例如海口雨日比 ${pct(hk.rainRate)}，哈尔滨 ${pct(W.regions[0]!.rainRate)}）。全国区县训练把同一循环并行到 ${D.nDistricts} 个 y 向量：X 仍是 ${D.nTrainDays}×31，Y 是 ${D.nTrainDays}×${D.nDistricts}，一次矩阵梯度同时更新所有区县的 w、b。
 
 ### 4.4 参数量
 
-每区 Bernoulli：31 + 1 = 32。每区 softmax：3×(31+1)=96。每区合计 128。十二区合计 1,536 个自由参数。训练样本 ${W.nTotalSamples}，训练段 12×${ouhai.trainN}=${12 * ouhai.trainN}，约 14 条/参数，属于可识别的小模型。
+每区县 Bernoulli：31 + 1 = 32。每区县 softmax：3×(31+1)=96。每区县合计 128。${D.nDistricts} 区县合计 ${D.nDistricts * 128} 个自由参数。训练样本 ${D.nDistricts}×${D.nTrainDays}=${D.nDistricts * D.nTrainDays}，约 ${(D.nDistricts * D.nTrainDays / (D.nDistricts * 128)).toFixed(1)} 条/参数。十二气候区对照另有 1,536 个参数，见 6.9 节。
 
 ---
 
 ## 第 5 章 数据、标签与样本数量
 
-来源：Open-Meteo Historical Weather API（ERA5 再分析）。引用：${W.source}。
+主数据：NOAA CPC Unified Gauge 全球日降水（0.5°），按区县行政中心双线性插值到点。引用：${D.source}。Open-Meteo 历史接口在全国拉取时触发 429，故区县训练改用一次下载的 CPC 年文件，避免伪造逐区噪声。CPC 原生分辨率 0.5°，相邻区县序列高度相关，但每区单独拟合 (w, b)，不共享。
 
-时段 ${W.start}–${W.end}。切分以日历为准，禁止随机打乱，以免未来节气泄漏。
+时段 ${D.start}–${D.end}（2026 年 CPC 文件止于 08-27）。切分以日历为准，禁止随机打乱，以免未来节气泄漏。
 
 - 有雨：日降水量 ≥ 0.1 mm。
 - 旬雨势：连续十日中雨日 ≥ 5。
-- 三项：雨（降水≥0.1 mm 或 WMO 码 ≥51）；晴（码 ≤1）；其余为阴。
+- 三项（无 WMO 码）：晴 p<0.1 mm；阴 0.1≤p<5；雨 p≥5 mm。
+
+区县 ${D.nDistricts}，日 ${D.nDays}，总样本 ${D.nTotalSamples.toLocaleString()}。训练 ${D.nDistricts}×${D.nTrainDays}=${(D.nDistricts * D.nTrainDays).toLocaleString()} 条，检验 ${D.nDistricts}×${D.nTestDays}=${(D.nDistricts * D.nTestDays).toLocaleString()} 条。
+
+排盘特征全国共用（历法相同），标签按区县不同，因此 X 只排一次 ${D.nDays}×31，再对 ${D.nDistricts} 组 y 分别回归。
+
+十二气候区对照数据仍为 Open-Meteo / ERA5，样本表：
 
 ${regionSummaryTable()}
 
-总样本 ${W.nTotalSamples} = ${W.nRegions} 区 × ${W.nDays} 日。训练 ${W.nRegions}×${ouhai.trainN}=${W.nRegions * ouhai.trainN} 条，检验 ${W.nRegions}×${ouhai.testN}=${W.nRegions * ouhai.testN} 条。
-
-排盘特征全国共用（历法相同），标签按区不同，因此 X 只排一次 2432×31，再对十二组 y 分别回归。
-
 ---
 
-## 第 6 章 十二区最终训练结果与完整权重
+## 第 6 章 全国区县最终训练结果与完整权重
 
-全国旬准确率均值 ${pct(W.eventCalibration.meanXunAcc)}。广州旬检验 ${pct(gz.metrics.xunAccTest)}、海口旬训练 ${pct(hk.metrics.xunAccTrain)} 达到 90%；其余区如实低于该阈值。最强特征普遍是年积日 cos（气候学），奇门 one-hot 提供区内增量。
+方法：${D.method}
 
-关键特征跨区对照（单位：分值 22β）：
+机器学习：${D.ml.primary}；${D.ml.auxiliary}；优化器 ${D.ml.optimizer}；epochs=${D.ml.epochs}（softmax 80）；η=${D.ml.learningRate}；λ=${D.ml.l2}；P=σ(S/22)，S=22(b+w⊤x)。
 
-${crossRegionKeyTable()}
+全国旬准确率均值 ${pct(D.meanXunAcc)}，有雨日值检验均值 ${pct(D.meanRainAccTest)}。不把任何省份改写成 90%。最强特征普遍是年积日 cos（气候学季节项），奇门 one-hot 提供区内增量。
 
-以下每一小节是该区数学模型的最终数值。主模型
+### 6.0 分省汇总
+
+${provinceTable()}
+
+${D.nDistricts} 套完整 31 维权重无法全部排进 Word（约 ${D.nDistricts}×32 行）。软件实际使用的全部系数在管理员下载的 qimen-district-weights-2020-2026.json。下文给出八个样例区县的完整 β，覆盖东南沿海、华北、华南、西南、东北、海南、高原。
+
+主模型
 
 \\\\[ z = b + \\sum_{j=1}^{31} w_j x_j,\\quad S=22z,\\quad P=\\sigma(S/22) \\\\]
 
-的 b 与全部 w_j 均列出。
+${sampleDistrictChapters()}
 
-${allRegionChapters()}
-
-十二区平均 logit（用于第 7 章事项信度，不是预报模型）：
+### 6.9 全国区县平均 logit（用于第 7 章事项信度）
 
 ${mdTable(
   ["特征", "平均 logit β̄", "分值 22β̄"],
-  W.eventCalibration.pooledLogit.map((f) => [f.name, n4(f.logit), n3(f.score)]),
+  D.pooledLogit.map((f) => [f.name, n4(f.logit), n3(f.score)]),
 )}
+
+### 6.10 十二气候区对照（Open-Meteo / ERA5）
+
+以下十二区不是运行时天气模型，仅保留为方法对照。运行时选点浙江省温州市瓯海区与北京市海淀区使用各自区县权重，不再落入同一「华东」或「华北」模型。
+
+全国对照旬均值 ${pct(W.eventCalibration.meanXunAcc)}。广州旬检验 ${pct(gz.metrics.xunAccTest)}、海口旬训练 ${pct(hk.metrics.xunAccTrain)}。
+
+${crossRegionKeyTable()}
+
+${allRegionChapters()}
 
 ---
 
@@ -440,9 +545,9 @@ ${mdTable(
 
 ### 7.1 公式
 
-记经典先验为 w0（见 constants.ts 中 GATE_BASE / GOD_BASE / STAR_BASE，来自《秘笈》开休生吉、死惊伤凶等）。十二区平均系数为
+记经典先验为 w0（见 constants.ts 中 GATE_BASE / GOD_BASE / STAR_BASE，来自《秘笈》开休生吉、死惊伤凶等）。全国 ${D.nDistricts} 个区县平均系数为
 
-\\\\[ \\bar\\beta_k = \\frac{1}{12}\\sum_{r=1}^{12} w_{r,k} \\\\]
+\\\\[ \\bar\\beta_k = \\frac{1}{${D.nDistricts}}\\sum_{r=1}^{${D.nDistricts}} w_{r,k} \\\\]
 
 中位数 med = median_k |β̄_k| = ${n4(med)}。信度
 
@@ -450,7 +555,7 @@ ${mdTable(
 
 全国旬准确率尺度
 
-\\\\[ g = 0.92 + 0.16\\,\\bar a_{旬} = 0.92 + 0.16\\times ${n4(W.eventCalibration.meanXunAcc)} = ${n4(EVENT_CALIBRATION.globalScale)} \\\\]
+\\\\[ g = 0.92 + 0.16\\,\\bar a_{旬} = 0.92 + 0.16\\times ${n4(EVENT_CALIBRATION.meanXunAcc)} = ${n4(EVENT_CALIBRATION.globalScale)} \\\\]
 
 最终事项权重
 
@@ -491,11 +596,12 @@ ${eventChapters()}
 
 1. 十二类日常事项与天气已统一为 S 与 P=σ(S/22)，界面都以分值与百分比同时给出。
 2. 事项算法是可加评分而非黑箱：用神取宫、基础分、十二类偏置、干支、长生、月令、格局、阶段权重 0.25/0.35/0.40/0.55 全部在第 8–11 章列表导出，并附一份真实起盘的逐步算例。
-3. 2020–2026、十二区、${W.nTotalSamples} 条样本上的 L2 逻辑回归权重全部写入本文第 6 章。
-4. 事项门星神基础分已按天气 |β| 信度与全国旬准确率尺度更新，逐步计算见第 7 章；偏置 δ 与格局表不随天气改写。
-5. 旬 90% 只在部分区达到；全国均值 ${pct(W.eventCalibration.meanXunAcc)}，本文不虚报。
+3. 2020–2026、全国 ${D.nDistricts} 区县、${D.nTotalSamples.toLocaleString()} 条样本上的 L2 逻辑回归按区县独立训练；各省汇总与八个样例区县完整权重写入第 6 章，其余区县见 JSON。
+4. 事项门星神基础分已按全国区县天气 |β| 信度与旬准确率尺度更新，逐步计算见第 7 章；偏置 δ 与格局表不随天气改写。
+5. 全国旬准确率均值 ${pct(D.meanXunAcc)}，有雨日值检验 ${pct(D.meanRainAccTest)}，本文不虚报 90%。
 6. 年积日 cos 是天气最强特征，说明气候学季节项必须显式放入，否则会把夏天的雨算进玄武。
 7. 人事没有逐日吉凶标签，故事项不能再做一次逻辑回归；天气回归只约束基础分尺度。
+8. 选点换区即换模型：瓯海与海淀、天河各自有独立 (w, b)。
 
 ---
 
@@ -512,6 +618,8 @@ ${eventChapters()}
 [5] Hersbach, H., Bell, B., Berrisford, P., et al. (2020). The ERA5 global reanalysis. Q. J. R. Meteorol. Soc., 146, 1999–2049.
 
 [6] Zippenfenig, P. (2023). Open-Meteo.com Weather API. Zenodo. https://doi.org/10.5281/zenodo.7970649
+
+[6a] Xie, P., Chen, M., Yang, S., et al. CPC Unified Gauge-Based Analysis of Global Daily Precipitation. NOAA PSL.
 
 [7] Wilks, D. S. (2019). Statistical Methods in the Atmospheric Sciences (4th ed.). Elsevier.
 
@@ -533,9 +641,10 @@ ${eventChapters()}
 
 ## 附录 A 复现
 
-- 原始日值：weather-regions.json（${W.start}–${W.end}，十二区，每区 ${W.nDays} 日）
-- 最终模型：weather-weights.json（每区 scoreModel.w/b 与 daily3.w/b，以及 eventCalibration）
-- 训练脚本：全批 GD，epochs=${W.ml.epochs}，η=${W.ml.learningRate}，λ=${W.ml.l2}
+- 区县日值标签：NOAA CPC precip.YYYY.nc，${D.start}–${D.end}，按区县中心双线性插值
+- 区县最终模型：qimen-district-weights-2020-2026.json（${D.nCells} 套 scoreModel.w/b 与 daily3.w/b，以及 eventCalibration）
+- 十二气候区对照：weather-regions.json / weather-weights.json
+- 训练脚本：全批 GD，epochs=${D.ml.epochs}，η=${D.ml.learningRate}，λ=${D.ml.l2}
 - 公式：P = 1/(1+exp(-S/22))，S = 22*(b + w·x)
 - 机器学习：Bernoulli logistic regression + multinomial softmax
 - 事项公式：S_raw = 0.25 S始 + 0.35 S中 + 0.40 S终 + 0.55 S辅，P = 1/(1+exp(-S/22))

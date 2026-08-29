@@ -5,11 +5,12 @@ import { digitRootToJu } from "@/lib/qimen/classic";
 import { CITIES, EVENTS } from "@/lib/qimen/constants";
 import { buildChart } from "@/lib/qimen/chart";
 import { peopleRelations, scoreAllEvents, scoreEvent } from "@/lib/qimen/score";
+import type { FortuneKind } from "@/lib/qimen/fortune";
 import { areasOf, citiesOf, DEFAULT_LOCATION, locationLng, provinces } from "@/lib/qimen/china";
 import type { EventId, EventScore, Gender, PalaceId, PeopleLink, QimenChart } from "@/lib/qimen/types";
 
 export type Mode = "scan" | "ask";
-export type ViewTab = "board" | "events" | "people" | "directions" | "weather";
+export type ViewTab = "board" | "events" | "people" | "directions" | "weather" | "fortune";
 export type Casting = "chaibu" | "lots";
 
 export type QueryState = {
@@ -28,6 +29,7 @@ export type QueryState = {
   birthYear: string;
   eventId: EventId;
   selectedPalace: PalaceId | null;
+  fortuneScope: FortuneKind;
   provinceCode: string;
   cityCode: string;
   districtCode: string;
@@ -84,6 +86,7 @@ export const useAppStore = create<AppStore>()(
       birthYear: "",
       eventId: "wealth",
       selectedPalace: null,
+      fortuneScope: "year",
       provinceCode: DEFAULT_LOCATION.provinceCode,
       cityCode: DEFAULT_LOCATION.cityCode,
       districtCode: DEFAULT_LOCATION.districtCode,
@@ -159,6 +162,7 @@ export const useAppStore = create<AppStore>()(
         gender: s.gender,
         birthYear: s.birthYear,
         eventId: s.eventId,
+        fortuneScope: s.fortuneScope,
         provinceCode: s.provinceCode,
         cityCode: s.cityCode,
         districtCode: s.districtCode,

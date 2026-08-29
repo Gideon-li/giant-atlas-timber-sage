@@ -14,10 +14,12 @@ function Cell({
   palace,
   active,
   onSelect,
+  mark,
 }: {
   palace: Palace;
   active: boolean;
   onSelect: (id: PalaceId) => void;
+  mark?: string;
 }) {
   const isCenter = palace.id === 5;
   return (
@@ -41,6 +43,7 @@ function Cell({
       <div className="mt-1 flex flex-wrap gap-1">
         {palace.god ? <Badge>{palace.god}</Badge> : null}
         {palace.isZhiFu ? <Badge tone="warn">值符</Badge> : null}
+        {mark ? <Badge tone="warn">{mark}</Badge> : null}
         {palace.isKong ? <Badge tone="bad">空</Badge> : null}
         {palace.isMa ? <Badge tone="warn">马</Badge> : null}
       </div>
@@ -78,10 +81,14 @@ export function QimenBoard({
   chart,
   selected,
   onSelect,
+  caption,
+  marks,
 }: {
   chart: QimenChart;
   selected: PalaceId | null;
   onSelect: (id: PalaceId) => void;
+  caption?: string;
+  marks?: Partial<Record<PalaceId, string>>;
 }) {
   return (
     <div>
@@ -89,6 +96,7 @@ export function QimenBoard({
         <div>
           <h2 className="font-display text-lg text-fg">洛书九宫</h2>
           <p className="text-xs text-muted">
+            {caption ? `${caption} · ` : ""}
             {chart.ju.label} · 旬首{chart.meta.xunShou}（{chart.meta.xunYi}）· 空亡
             {chart.meta.xunKong.join("")} · 值使{chart.meta.zhiShiGate}
             {chart.meta.fuYin ? " · 伏吟" : ""}
@@ -104,6 +112,7 @@ export function QimenBoard({
             palace={chart.palaces[id]}
             active={selected === id}
             onSelect={onSelect}
+            mark={marks?.[id]}
           />
         ))}
       </div>

@@ -4,6 +4,7 @@ import { PAPER_MD, PAPER_TITLE } from "@/lib/thesis/paper";
 import { downloadThesisDocx } from "@/lib/thesis/docx";
 import { EVENT_MODEL_SPEC } from "@/lib/thesis/event-spec";
 import { REGIONS_PACK, TRAINED_WEIGHTS } from "@/lib/qimen/weather-model";
+import districtSummary from "@/lib/qimen/district-summary.json";
 import { Button } from "@/components/ui/button";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -36,6 +37,14 @@ function ThesisPage() {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "weather-weights-2020-2026.json";
+    a.click();
+  };
+  const downloadDistrictWeights = async () => {
+    const res = await fetch("/qimen-district-weights-2020-2026.json");
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "qimen-district-weights-2020-2026.json";
     a.click();
   };
   const downloadEventModel = () => {
@@ -84,8 +93,11 @@ function ThesisPage() {
             <Button type="button" variant="secondary" size="sm" onClick={downloadData}>
               下载训练数据
             </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={downloadDistrictWeights}>
+              下载全国区县权重
+            </Button>
             <Button type="button" variant="secondary" size="sm" onClick={downloadWeights}>
-              下载十二区权重
+              下载十二区对照
             </Button>
             <Button type="button" variant="secondary" size="sm" onClick={downloadEventModel}>
               下载事项模型
@@ -100,8 +112,9 @@ function ThesisPage() {
         <p className="text-xs text-subtle">博士学位论文体例 · 仅管理员可见</p>
         <h1 className="mt-2 font-display text-2xl leading-snug text-fg">{PAPER_TITLE}</h1>
         <p className="mt-3 text-xs text-muted">
-          {TRAINED_WEIGHTS.nRegions} 气候区 · {TRAINED_WEIGHTS.start} – {TRAINED_WEIGHTS.end} · 总样本{" "}
-          {TRAINED_WEIGHTS.nTotalSamples} · 十二类事项加性评分 · Bernoulli 逻辑回归 + softmax
+          {districtSummary.nDistricts} 区县独立训练 · {districtSummary.start} – {districtSummary.end} · 总样本{" "}
+          {districtSummary.nTotalSamples.toLocaleString()} · 旬检验均 {(districtSummary.meanXunAcc * 100).toFixed(1)}% ·
+          十二类事项加性评分 · Bernoulli 逻辑回归 + softmax
         </p>
         <div className="thesis-body mt-8 text-sm leading-7 text-fg">{renderMd(PAPER_MD)}</div>
       </article>

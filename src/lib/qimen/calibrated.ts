@@ -3,22 +3,21 @@ import {
   GOD_BASE as CLASSIC_GOD_BASE,
   STAR_BASE as CLASSIC_STAR_BASE,
 } from "./constants";
-import weightsJson from "./weather-weights.json";
+import calJson from "./event-calibration.json";
 
 type Cal = {
-  eventCalibration: {
-    globalScale: number;
-    meanXunAcc: number;
-    method: string;
-    god: Record<string, number>;
-    gate: Record<string, number>;
-    star: Record<string, number>;
-  };
+  globalScale: number;
+  meanXunAcc: number;
+  method: string;
+  pooledLogit: { name: string; logit: number; score: number }[];
+  god: Record<string, number>;
+  gate: Record<string, number>;
+  star: Record<string, number>;
 };
 
-const cal = (weightsJson as Cal).eventCalibration;
+const cal = calJson as Cal;
 
-/** 天气逻辑回归校准后的事项权重（符号仍依人事吉凶）。 */
+/** 全国区县天气逻辑回归校准后的事项权重（符号仍依人事吉凶）。 */
 export const GATE_BASE = cal.gate;
 export const GOD_BASE = cal.god;
 export const STAR_BASE = cal.star;

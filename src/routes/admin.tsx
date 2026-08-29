@@ -18,7 +18,8 @@ import { ADMIN_PHONES } from "@/lib/admin-ids";
 import { downloadThesisDocx } from "@/lib/thesis/docx";
 import { EVENT_MODEL_SPEC } from "@/lib/thesis/event-spec";
 import { Button } from "@/components/ui/button";
-import { TRAINED_WEIGHTS, REGIONS_PACK } from "@/lib/qimen/weather-model";
+import { REGIONS_PACK } from "@/lib/qimen/weather-model";
+import districtSummary from "@/lib/qimen/district-summary.json";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -148,6 +149,15 @@ function AdminInner() {
     a.click();
   };
 
+  const downloadDistrictWeights = async () => {
+    const res = await fetch("/qimen-district-weights-2020-2026.json");
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "qimen-district-weights-2020-2026.json";
+    a.click();
+  };
+
   const downloadEventModel = () => {
     const blob = new Blob([JSON.stringify(EVENT_MODEL_SPEC, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
@@ -220,8 +230,9 @@ function AdminInner() {
         <section className="rounded-xl border border-border bg-surface p-4">
           <h2 className="font-display text-base">论文与训练数据</h2>
           <p className="mt-1 text-xs text-muted">
-            仅管理员可下载。论文 Word 含十二类事项完整公式与偏置、十二区天气权重、校准过程。数据为 2020–2026 共{" "}
-            {TRAINED_WEIGHTS.nTotalSamples} 条。
+            仅管理员可下载。论文 Word 含十二类事项完整公式、全国 {districtSummary.nDistricts}{" "}
+            个区县天气权重说明、校准过程。区县样本 {districtSummary.nTotalSamples.toLocaleString()} 条（
+            {districtSummary.start}–{districtSummary.end}）。
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button type="button" onClick={downloadPaper}>
@@ -230,8 +241,11 @@ function AdminInner() {
             <Button type="button" variant="secondary" onClick={downloadData}>
               下载训练数据
             </Button>
+            <Button type="button" variant="secondary" onClick={downloadDistrictWeights}>
+              导出全国区县权重
+            </Button>
             <Button type="button" variant="secondary" onClick={downloadWeights} disabled={!metrics}>
-              导出天气权重
+              导出十二区对照权重
             </Button>
             <Button type="button" variant="secondary" onClick={downloadEventModel}>
               导出事项模型
@@ -360,13 +374,17 @@ function AdminInner() {
             <div>
               <h2 className="font-display text-sm">天气模型</h2>
               <p className="text-xs text-muted">
-                十二气候区 · {TRAINED_WEIGHTS.start}–{TRAINED_WEIGHTS.end} · 总样本 {TRAINED_WEIGHTS.nTotalSamples} ·{" "}
-                {String(TRAINED_WEIGHTS.ml.primary)}
+                全国 {districtSummary.nDistricts} 区县独立训练 · {districtSummary.start}–{districtSummary.end} · 总样本{" "}
+                {districtSummary.nTotalSamples.toLocaleString()} · 旬检验均{" "}
+                {(districtSummary.meanXunAcc * 100).toFixed(1)}% · {String(districtSummary.ml.primary)}
               </p>
             </div>
             <div className="flex gap-2">
+              <Button type="button" variant="secondary" onClick={downloadDistrictWeights}>
+                导出区县权重
+              </Button>
               <Button type="button" variant="secondary" onClick={downloadWeights} disabled={!metrics}>
-                导出权重
+                十二区对照
               </Button>
               <Button type="button" onClick={onTrain} disabled={busy}>
                 {busy ? "训练中" : "重新训练"}
@@ -414,6 +432,33 @@ function AdminInner() {
               {n}
             </p>
           ))}
+          <div className="mt-4 overflow-x-auto">
+            <p className="mb-2 text-xs text-muted">
+              各省区县旬检验（全国均值 {(districtSummary.meanXunAcc * 100).toFixed(1)}%，不虚报 90%）
+            </p>
+            <table className="w-full min-w-[640px] text-left text-[11px]">
+              <thead className="text-subtle">
+                <tr>
+                  {["省", "区县数", "雨日比", "有雨检验", "旬检验"].map((h) => (
+                    <th key={h} className="border-b border-border py-1.5 pr-3 font-medium">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {districtSummary.provinceMetrics.map((r) => (
+                  <tr key={r.province} className="border-b border-border/60">
+                    <td className="py-1.5 pr-3">{r.province}</td>
+                    <td className="py-1.5 pr-3 tabular-nums">{r.n}</td>
+                    <td className="py-1.5 pr-3 tabular-nums">{(r.rainRate * 100).toFixed(1)}%</td>
+                    <td className="py-1.5 pr-3 tabular-nums">{(r.rainAccTest * 100).toFixed(1)}%</td>
+                    <td className="py-1.5 pr-3 tabular-nums">{(r.xunAccTest * 100).toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <Link to="/thesis" className="mt-3 inline-block text-xs underline">
             打开研究论文
           </Link>

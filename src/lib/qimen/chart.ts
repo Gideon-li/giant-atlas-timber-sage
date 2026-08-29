@@ -77,6 +77,10 @@ function palaceOfBranch(branch: string): PalaceId | null {
   return map[branch] ?? null;
 }
 
+export function palaceOfEarthBranch(branch: string): PalaceId {
+  return palaceOfBranch(branch) ?? 5;
+}
+
 function isXing(a: string, b: string): boolean {
   if (a === b) return ["辰", "午", "酉", "亥"].includes(a);
   const groups = [

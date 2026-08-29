@@ -1,4 +1,4 @@
-import { HeavenStem, EarthBranch, SolarTime } from "tyme4ts";
+import { HeavenStem, EarthBranch, SolarTime, SolarTerm } from "tyme4ts";
 import { JU_BY_TERM } from "./constants";
 import type { DunType, FourPillars, JuInfo, Pillar, Yuan } from "./types";
 
@@ -158,6 +158,114 @@ export function beijingNow(): CivilTime {
 export function formatCivil(c: CivilTime): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${c.year}-${p(c.month)}-${p(c.day)} ${p(c.hour)}:${p(c.minute)}`;
+}
+
+export function civilMs(c: CivilTime): number {
+  return Date.UTC(c.year, c.month - 1, c.day, c.hour, c.minute);
+}
+
+export function addCivilDays(c: CivilTime, days: number): CivilTime {
+  const d = new Date(civilMs(c) + days * 86400000);
+  return {
+    year: d.getUTCFullYear(),
+    month: d.getUTCMonth() + 1,
+    day: d.getUTCDate(),
+    hour: d.getUTCHours(),
+    minute: d.getUTCMinutes(),
+  };
+}
+
+export function addCivilMinutes(c: CivilTime, minutes: number): CivilTime {
+  const d = new Date(civilMs(c) + minutes * 60000);
+  return {
+    year: d.getUTCFullYear(),
+    month: d.getUTCMonth() + 1,
+    day: d.getUTCDate(),
+    hour: d.getUTCHours(),
+    minute: d.getUTCMinutes(),
+  };
+}
+
+/** 二十四节气交节时刻（北京历面）。 */
+export function solarTermCivil(year: number, name: string): CivilTime {
+  const t = SolarTerm.fromName(year, name).getJulianDay().getSolarTime();
+  const at = {
+    year: t.getYear(),
+    month: t.getMonth(),
+    day: t.getDay(),
+    hour: t.getHour(),
+    minute: t.getMinute(),
+  };
+  // 交节瞬间干支尚未入新月/新年，排盘取交节后三分钟。
+  return addCivilMinutes(at, 3);
+}
+
+/** 节（非气）起干支月：寅月立春 … 丑月小寒。 */
+export const MONTH_JIE: { branch: string; term: string }[] = [
+  { branch: "寅", term: "立春" },
+  { branch: "卯", term: "惊蛰" },
+  { branch: "辰", term: "清明" },
+  { branch: "巳", term: "立夏" },
+  { branch: "午", term: "芒种" },
+  { branch: "未", term: "小暑" },
+  { branch: "申", term: "立秋" },
+  { branch: "酉", term: "白露" },
+  { branch: "戌", term: "寒露" },
+  { branch: "亥", term: "立冬" },
+  { branch: "子", term: "大雪" },
+  { branch: "丑", term: "小寒" },
+];
+
+export type YearBound = { ganzhiYear: number; lichun: CivilTime };
+
+/** 立春为年界。所选时刻若在立春前，年运属上一年。 */
+export function yearBoundary(civil: CivilTime): YearBound {
+  const lichun = solarTermCivil(civil.year, "立春");
+  if (civilMs(civil) < civilMs(lichun)) {
+    return { ganzhiYear: civil.year - 1, lichun: solarTermCivil(civil.year - 1, "立春") };
+  }
+  return { ganzhiYear: civil.year, lichun };
+}
+
+export type MonthBound = {
+  branch: string;
+  term: string;
+  at: CivilTime;
+  ganzhiYear: number;
+};
+
+/** 某干支年内十二节气交节（寅月立春至翌年丑月小寒）。 */
+export function yearMonthTerms(ganzhiYear: number): MonthBound[] {
+  return MONTH_JIE.map((m) => {
+    const y = m.branch === "丑" ? ganzhiYear + 1 : ganzhiYear;
+    const at = solarTermCivil(y, m.term);
+    return { ...m, at, ganzhiYear };
+  });
+}
+
+/** 当前干支月：最近一个已交的节。 */
+export function monthBoundary(civil: CivilTime): MonthBound {
+  const yb = yearBoundary(civil);
+  const terms = [
+    ...yearMonthTerms(yb.ganzhiYear - 1),
+    ...yearMonthTerms(yb.ganzhiYear),
+    ...yearMonthTerms(yb.ganzhiYear + 1),
+  ];
+  const now = civilMs(civil);
+  const past = terms.filter((t) => civilMs(t.at) <= now).sort((a, b) => civilMs(b.at) - civilMs(a.at));
+  return past[0] ?? yearMonthTerms(yb.ganzhiYear)[0]!;
+}
+
+/** 日家取午时（日之中）为当日代表盘。 */
+export function noonCivil(civil: CivilTime): CivilTime {
+  return { year: civil.year, month: civil.month, day: civil.day, hour: 12, minute: 0 };
+}
+
+/** 十二时辰中点：子 0 时 … 亥 22 时。 */
+export const HOUR_MIDPOINTS = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22] as const;
+
+export function hourCivil(civil: CivilTime, hour: number): CivilTime {
+  return { year: civil.year, month: civil.month, day: civil.day, hour, minute: 0 };
 }
 
 export function wuxingRelation(

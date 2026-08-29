@@ -1,4 +1,5 @@
 import pca from "./china-pca.json";
+import districtCoordsJson from "./district-coords.json";
 
 export type AreaNode = { n: string; code: string };
 export type CityNode = { n: string; code: string; a: AreaNode[] };
@@ -76,9 +77,29 @@ export function areasOf(provinceCode: string, cityCode: string): AreaNode[] {
   return real.length ? real : areas;
 }
 
+export const DISTRICT_COORDS = districtCoordsJson as Record<
+  string,
+  { name: string; lat: number; lng: number; level: string }
+>;
+
 export function locationLng(provinceCode: string, districtCode?: string): number {
+  if (districtCode && DISTRICT_COORDS[districtCode]) return DISTRICT_COORDS[districtCode]!.lng;
   if (districtCode && DISTRICT_LNG[districtCode] != null) return DISTRICT_LNG[districtCode]!;
+  if (DISTRICT_COORDS[provinceCode]) return DISTRICT_COORDS[provinceCode]!.lng;
   return PROVINCE_LNG[provinceCode] ?? 120.0;
+}
+
+export function locationLatLng(
+  provinceCode: string,
+  cityCode?: string,
+  districtCode?: string,
+): { lat: number; lng: number } {
+  const hit =
+    (districtCode ? DISTRICT_COORDS[districtCode] : undefined) ??
+    (cityCode ? DISTRICT_COORDS[cityCode] : undefined) ??
+    DISTRICT_COORDS[provinceCode];
+  if (hit) return { lat: hit.lat, lng: hit.lng };
+  return { lat: DEFAULT_LOCATION.lat, lng: locationLng(provinceCode, districtCode) };
 }
 
 export function isOuhai(province: string, city: string, district: string): boolean {

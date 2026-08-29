@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Compass, CloudSun, LayoutGrid, MapPin, Users } from "lucide-react";
+import { Compass, CloudSun, LayoutGrid, MapPin, Users, CalendarRange } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { QueryForm } from "@/components/query-form";
 import { QimenBoard } from "@/components/qimen-board";
 import { EventDetail, EventList, PeoplePanel } from "@/components/event-panel";
 import { DirectionPanel } from "@/components/direction-panel";
 import { WeatherPanel } from "@/components/weather-panel";
+import { FortunePanel } from "@/components/fortune-panel";
 import { useAppStore } from "@/lib/store";
 import { beijingNow } from "@/lib/qimen/calendar";
+import { buildFortunePack } from "@/lib/qimen/fortune";
 import { cn } from "@/lib/utils";
 import type { PalaceId } from "@/lib/qimen/types";
 import { UserButton } from "@/lib/auth/gates";
@@ -75,6 +77,7 @@ export function AppShell() {
   const elder = useAppStore((s) => s.elder);
   const provinceCode = useAppStore((s) => s.provinceCode);
   const districtCode = useAppStore((s) => s.districtCode);
+  const fortuneScope = useAppStore((s) => s.fortuneScope);
 
   useEffect(() => {
     const unsub = useAppStore.persist.onFinishHydration(() => {
@@ -117,6 +120,20 @@ export function AppShell() {
 
   const { chart, events, focus, people } = result;
 
+  const fortune = useMemo(() => {
+    const birth = birthYear.trim() ? Number(birthYear) : null;
+    return buildFortunePack(civil, {
+      gender,
+      birthYear: birth && birth >= 1920 && birth <= 2030 ? birth : null,
+    });
+  }, [civil.year, civil.month, civil.day, civil.hour, gender, birthYear]);
+
+  const period = fortune[fortuneScope];
+  const boardChart = tab === "fortune" ? period.chart : chart;
+  const boardMarks = tab === "fortune" ? period.marks : undefined;
+  const boardCaption =
+    tab === "fortune" ? (fortuneScope === "year" ? "年盘" : fortuneScope === "month" ? "月盘" : "日盘") : "时盘";
+
   const onSelectPalace = (id: PalaceId) => {
     setField("selectedPalace", selectedPalace === id ? null : id);
     setField("tab", "board");
@@ -124,6 +141,7 @@ export function AppShell() {
 
   const tabs = [
     ["events", "事项", LayoutGrid],
+    ["fortune", "运势", CalendarRange],
     ["board", "九宫", Compass],
     ["people", "人事", Users],
     ["directions", "方位", MapPin],
@@ -192,7 +210,13 @@ export function AppShell() {
 
         <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <section className={cn(tab === "board" ? "block" : "hidden lg:block")}>
-            <QimenBoard chart={chart} selected={selectedPalace} onSelect={onSelectPalace} />
+            <QimenBoard
+              chart={boardChart}
+              selected={selectedPalace}
+              onSelect={onSelectPalace}
+              caption={boardCaption}
+              marks={boardMarks}
+            />
           </section>
 
           <section className={cn(tab === "board" ? "hidden lg:block" : "block")}>
@@ -200,6 +224,7 @@ export function AppShell() {
               {(
                 [
                   ["events", "事项"],
+                  ["fortune", "运势"],
                   ["people", "人事"],
                   ["directions", "方位"],
                   ["weather", "天气"],
@@ -225,6 +250,12 @@ export function AppShell() {
               <DirectionPanel chart={chart} />
             ) : tab === "weather" ? (
               <WeatherPanel chart={chart} />
+            ) : tab === "fortune" ? (
+              <FortunePanel
+                pack={fortune}
+                scope={fortuneScope}
+                onScope={(k) => setField("fortuneScope", k)}
+              />
             ) : mode === "ask" ? (
               <div className="flex flex-col gap-3">
                 <button
@@ -257,7 +288,7 @@ export function AppShell() {
         </div>
 
         <p className="mt-10 mb-6 text-center text-xs leading-5 text-subtle">
-          拆补时盘或求签定局。神应开始、星应过程、门应收局。方位用事从八门古法。天气为十二气候区独立逻辑回归，数据 2020–2026。事项门星神已按天气信度校准。论文与训练数据需管理员登录后，在右上角「管理」或「论文」下载。供学习，并非定论。
+          拆补时盘或求签定局。年运看立春交节，月运看当月节气，日运看午时，时辰起伏看十二时盘。神应开始、星应过程、门应收局。方位用事从八门古法。天气按中国每个区县单独逻辑回归，数据 2020–2026。事项门星神已按全国天气信度校准。论文与训练数据需管理员登录后，在右上角「管理」或「论文」下载。供学习，并非定论。
         </p>
       </main>
     </div>

@@ -70,7 +70,7 @@ export function LocationPicker() {
       <p className="mt-2 text-[11px] text-subtle">
         默认 {DEFAULT_LOCATION.province}
         {DEFAULT_LOCATION.city}
-        {DEFAULT_LOCATION.district}。天气权重仅在瓯海区上用 2025–2026 实测训练。
+        {DEFAULT_LOCATION.district}。天气按所选区县中心点单独训练（2020–2026，全国每个区各一套权重）。
       </p>
     </div>
   );

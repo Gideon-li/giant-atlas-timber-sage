@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { isOuhai } from "@/lib/qimen/china";
-import { forecastWeather, REGIONS_PACK, type WeatherForecast } from "@/lib/qimen/weather-model";
-import { regionForProvince, regionMeta } from "@/lib/qimen/regions";
+import {
+  forecastDistrictWeather,
+  loadDistrictWeights,
+  type DistrictPack,
+} from "@/lib/qimen/district-model";
+import type { WeatherForecast } from "@/lib/qimen/weather-model";
 import type { QimenChart } from "@/lib/qimen/types";
 import { useAppStore } from "@/lib/store";
 import { Badge } from "@/components/ui/badge";
@@ -17,39 +21,59 @@ export function WeatherPanel({ chart }: { chart: QimenChart }) {
   const district = useAppStore((s) => s.district);
   const civil = useAppStore((s) => s.civil);
   const provinceCode = useAppStore((s) => s.provinceCode);
+  const cityCode = useAppStore((s) => s.cityCode);
+  const districtCode = useAppStore((s) => s.districtCode);
   const ouhai = isOuhai(province, city, district);
-  const regionId = regionForProvince(provinceCode);
-  const region = regionMeta(regionId);
+  const [pack, setPack] = useState<DistrictPack | null>(null);
   const [fc, setFc] = useState<WeatherForecast | null>(null);
 
   useEffect(() => {
+    let live = true;
+    loadDistrictWeights().then((p) => {
+      if (live) setPack(p);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pack) return;
     setFc(null);
     const id = window.setTimeout(() => {
-      setFc(forecastWeather(chart, civil.month, doyOf(civil.year, civil.month, civil.day), regionId));
+      setFc(
+        forecastDistrictWeather(
+          chart,
+          doyOf(civil.year, civil.month, civil.day),
+          { province, city, district, provinceCode, cityCode, districtCode },
+          pack,
+        ),
+      );
     }, 0);
     return () => window.clearTimeout(id);
-  }, [chart, civil.year, civil.month, civil.day, regionId]);
+  }, [pack, chart, civil.year, civil.month, civil.day, province, city, district, provinceCode, cityCode, districtCode]);
 
   return (
     <div className="flex flex-col gap-4">
       <div>
         <h2 className="font-display text-lg text-fg">古法测天</h2>
         <p className="text-xs text-muted">
-          玄武主雨，腾蛇主雷，白虎主风，九天主晴，九地主雾湿。当前气候区「{region.place}」使用独立权重，数据 {REGIONS_PACK.start}–
-          {REGIONS_PACK.end} Open-Meteo 再分析。
+          玄武主雨，腾蛇主雷，白虎主风，九天主晴，九地主雾湿。中国每个省、每个市、每个区县按其行政中心单独训练逻辑回归，数据{" "}
+          {pack ? `${pack.start}–${pack.end}` : "2020–2026"} NOAA CPC 日降水。
+          {pack ? ` 全国 ${pack.nDistricts} 个区县，${pack.nTotalSamples.toLocaleString()} 条样本。` : ""}
         </p>
       </div>
 
       <p className="rounded-md border border-border bg-elevated px-3 py-2 text-xs text-muted">
         选点 {province}
         {city}
-        {district} → 气候站 {region.name}（{region.place}）
-        {ouhai ? " · 瓯海为原校准点" : " · 本区独立训练，非瓯海套用"}。全国共 {REGIONS_PACK.regions.length} 套权重。
+        {district}
+        {ouhai ? " · 瓯海为默认点" : ""}。本区中心点有自己的 (w, b)，与邻区不共享。换区即换模型。
       </p>
 
-      {!fc ? (
+      {!fc || !pack ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-muted">
-          正在载入「{region.name}」权重…
+          正在载入「{district || city}」区县权重…
         </p>
       ) : (
         <div className="rounded-lg border border-border bg-surface p-4">
@@ -100,7 +124,7 @@ export function WeatherPanel({ chart }: { chart: QimenChart }) {
       )}
 
       <p className="text-xs leading-5 text-muted">
-        训练过程、权重与原始数据仅管理员可见。请用管理员账号登录后，打开右上角「管理」下载论文与数据。
+        全国区县权重、旬检验与论文仅管理员可见。请用管理员账号登录后，打开右上角「管理」下载。
       </p>
     </div>
   );

@@ -241,7 +241,7 @@ function bodyXml(md: string) {
   chunks.push(p(run(PAPER_TITLE, { east: "黑体", size: 36, bold: true }), `<w:jc w:val="center"/>`));
   chunks.push(
     p(
-      run("学科：应用统计学 / 中国术数文献的可计算建模    中国十二气候区    数据：2020-01-01 至 2026-08-28", {
+      run("学科：应用统计学 / 中国术数文献的可计算建模    中国区县独立天气模型    数据：2020-01-01 至 2026-08-27", {
         size: 21,
       }),
       `<w:jc w:val="center"/>`,
