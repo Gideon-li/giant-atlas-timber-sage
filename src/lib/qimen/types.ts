@@ -120,6 +120,9 @@ export type EventScore = {
   factors: ScoreFactor[];
   patterns: string[];
   reading: string;
+  associations: string[];
+  omen: string;
+  classicCite: string;
 };
 
 export type RelationKind =

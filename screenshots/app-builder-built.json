@@ -7,9 +7,9 @@
       "status": 200,
       "title": "奇门权衡",
       "hasCanvas": false,
-      "bodyTextLen": 710,
-      "bodyTextHash": "594cc28a0d542f614a90c1e5878fed4a7a8ad380993d8875f7bd635f520d55bd",
-      "bodyTextPrefix": "奇门权衡 以数权衡时空 · 以盘决断人事 2026-08-28 19:24 北京时间 · 戌时 丙午 丙申 甲戌 甲戌 起盘 时",
+      "bodyTextLen": 1052,
+      "bodyTextHash": "914a048cffec9afa9600a0096d587a21d9766455ebad40e650dffa6e199165da",
+      "bodyTextPrefix": "奇门权衡 以数权衡时空 · 以盘决断人事 2026-08-29 17:15 北京时间 · 酉时 丙午 丙申 乙亥 乙酉 登录 起",
       "horizontalOverflow": false,
       "consoleErrors": [],
       "pageErrors": [],
@@ -21,8 +21,8 @@
       "status": 200,
       "title": "奇门权衡",
       "hasCanvas": false,
-      "bodyTextLen": 401,
-      "bodyTextHash": "a4da49dd48f46df08057b2057e70dc8adf7dd248e6326a62010d8f38fe4b795b",
+      "bodyTextLen": 739,
+      "bodyTextHash": "f10da66dbaf0f49061a3ecbdc8438f038d7e3d946bb8e99dc50b09192cfe204e",
       "bodyTextPrefix": "奇门权衡 以数权衡时空 · 以盘决断人事 起盘 时间用北京时间。时辰一换，盘面与权重即变。 拆补时盘 求签定局 全盘扫描 定向问",
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -32,7 +32,5 @@
   },
   "brandWarnings": [],
   "authWarnings": [],
-  "verdictFile": "/workspace/screenshots/app-builder-built.json",
-  "divergesFromBaseline": false,
-  "baselineReasons": []
+  "verdictFile": "/workspace/screenshots/app-builder-built.json"
 }

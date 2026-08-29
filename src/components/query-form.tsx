@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { CITIES, EVENTS, HOUR_NAMES } from "@/lib/qimen/constants";
+import { LocationPicker } from "@/components/location-picker";
+import { EVENTS, HOUR_NAMES } from "@/lib/qimen/constants";
 import { dunFromSolarMonth, hourToZhiIndex, MONTH_NAMES } from "@/lib/qimen/calendar";
+import { digitRootToJu } from "@/lib/qimen/classic";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,10 +18,11 @@ export function QueryForm() {
   const civil = useAppStore((s) => s.civil);
   const setCivil = useAppStore((s) => s.setCivil);
   const trueSolar = useAppStore((s) => s.trueSolar);
-  const cityId = useAppStore((s) => s.cityId);
   const casting = useAppStore((s) => s.casting);
   const lotsMonth = useAppStore((s) => s.lotsMonth);
   const lotsJu = useAppStore((s) => s.lotsJu);
+  const lotsCode = useAppStore((s) => s.lotsCode);
+  const applyLotsCode = useAppStore((s) => s.applyLotsCode);
   const mode = useAppStore((s) => s.mode);
   const setField = useAppStore((s) => s.setField);
   const setLotsMonth = useAppStore((s) => s.setLotsMonth);
@@ -171,6 +174,31 @@ export function QueryForm() {
             })}
           </div>
 
+          <div className="mt-4 rounded-lg border border-border bg-elevated p-3">
+            <p className="text-xs text-muted">三位数求局</p>
+            <p className="mt-1 text-xs leading-5 text-subtle">
+              把三位数字各位相加，超过 9 再加，得到 1–9 即为局数。例：168 → 1+6+8=15 → 1+5=6，第六局。阴阳遁仍按月份。
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <input
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="如 168"
+                value={lotsCode ?? ""}
+                onChange={(e) => applyLotsCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="h-12 w-32 rounded-md border border-border bg-surface px-3 font-mono text-lg tabular-nums text-fg outline-none placeholder:text-subtle focus:border-ring"
+              />
+              {lotsCode ? (
+                <Badge tone="warn">
+                  {digitRootToJu(lotsCode).steps.join(" → ") || lotsCode} · {dunLabel}
+                  {lotsJu}局
+                </Badge>
+              ) : (
+                <span className="text-xs text-subtle">输入后自动定局</span>
+              )}
+            </div>
+          </div>
+
           <div className="mt-4 flex items-center justify-between gap-2">
             <p className="text-xs text-muted">抽局 · 选 1–9，或摇签</p>
             <Badge tone="warn">
@@ -253,20 +281,7 @@ export function QueryForm() {
       </div>
 
       {!isLots && trueSolar ? (
-        <label className="mt-3 flex flex-col gap-1 text-xs text-muted">
-          城市经度（近似真太阳时，未计均时差）
-          <select
-            value={cityId}
-            onChange={(e) => setField("cityId", e.target.value)}
-            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
-          >
-            {CITIES.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} · {c.lng}°E
-              </option>
-            ))}
-          </select>
-        </label>
+        <p className="mt-2 text-xs text-muted">真太阳时按所选省市区经度相对东经 120° 改正，未计均时差。</p>
       ) : null}
 
       <div className="mt-4">
@@ -289,6 +304,8 @@ export function QueryForm() {
           ))}
         </div>
       </div>
+
+      <LocationPicker />
 
       {mode === "ask" ? (
         <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-4">

@@ -1,13 +1,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { applyTrueSolar, beijingNow, getJuFromLots, type CivilTime } from "@/lib/qimen/calendar";
+import { digitRootToJu } from "@/lib/qimen/classic";
 import { CITIES, EVENTS } from "@/lib/qimen/constants";
 import { buildChart } from "@/lib/qimen/chart";
 import { peopleRelations, scoreAllEvents, scoreEvent } from "@/lib/qimen/score";
+import { areasOf, citiesOf, DEFAULT_LOCATION, locationLng, provinces } from "@/lib/qimen/china";
 import type { EventId, EventScore, Gender, PalaceId, PeopleLink, QimenChart } from "@/lib/qimen/types";
 
 export type Mode = "scan" | "ask";
-export type ViewTab = "board" | "events" | "people";
+export type ViewTab = "board" | "events" | "people" | "directions" | "weather";
 export type Casting = "chaibu" | "lots";
 
 export type QueryState = {
@@ -17,6 +19,8 @@ export type QueryState = {
   casting: Casting;
   lotsMonth: number;
   lotsJu: number;
+  lotsCode: string;
+  elder: boolean;
   mode: Mode;
   tab: ViewTab;
   personName: string;
@@ -24,6 +28,12 @@ export type QueryState = {
   birthYear: string;
   eventId: EventId;
   selectedPalace: PalaceId | null;
+  provinceCode: string;
+  cityCode: string;
+  districtCode: string;
+  province: string;
+  city: string;
+  district: string;
 };
 
 type AppStore = QueryState & {
@@ -32,6 +42,8 @@ type AppStore = QueryState & {
   useNow: () => void;
   setLotsMonth: (month: number) => void;
   drawLots: () => void;
+  applyLotsCode: (code: string) => void;
+  setLocation: (provinceCode: string, cityCode: string, districtCode: string) => void;
   resolvedCivil: () => CivilTime;
   compute: () => {
     chart: QimenChart;
@@ -43,6 +55,17 @@ type AppStore = QueryState & {
 
 const defaultCivil: CivilTime = { year: 2026, month: 8, day: 28, hour: 12, minute: 0 };
 
+function namesOf(provinceCode: string, cityCode: string, districtCode: string) {
+  const p = provinces().find((x) => x.code === provinceCode);
+  const c = citiesOf(provinceCode).find((x) => x.code === cityCode);
+  const a = areasOf(provinceCode, cityCode).find((x) => x.code === districtCode);
+  return {
+    province: p?.n ?? DEFAULT_LOCATION.province,
+    city: c?.n ?? DEFAULT_LOCATION.city,
+    district: a?.n ?? DEFAULT_LOCATION.district,
+  };
+}
+
 export const useAppStore = create<AppStore>()(
   persist(
     (set, get) => ({
@@ -52,6 +75,8 @@ export const useAppStore = create<AppStore>()(
       casting: "chaibu",
       lotsMonth: defaultCivil.month,
       lotsJu: 5,
+      lotsCode: "",
+      elder: false,
       mode: "scan",
       tab: "events",
       personName: "",
@@ -59,6 +84,12 @@ export const useAppStore = create<AppStore>()(
       birthYear: "",
       eventId: "wealth",
       selectedPalace: null,
+      provinceCode: DEFAULT_LOCATION.provinceCode,
+      cityCode: DEFAULT_LOCATION.cityCode,
+      districtCode: DEFAULT_LOCATION.districtCode,
+      province: DEFAULT_LOCATION.province,
+      city: DEFAULT_LOCATION.city,
+      district: DEFAULT_LOCATION.district,
       setCivil: (civil) => set({ civil }),
       setField: (key, value) => set({ [key]: value } as Partial<QueryState>),
       useNow: () => {
@@ -71,13 +102,30 @@ export const useAppStore = create<AppStore>()(
       },
       drawLots: () => {
         const n = 1 + Math.floor(Math.random() * 9);
-        set({ lotsJu: n });
+        set({ lotsJu: n, lotsCode: "" });
+      },
+      applyLotsCode: (code) => {
+        const r = digitRootToJu(code);
+        if (!r.source) {
+          set({ lotsCode: code });
+          return;
+        }
+        set({ lotsCode: r.source, lotsJu: r.ju });
+      },
+      setLocation: (provinceCode, cityCode, districtCode) => {
+        set({
+          provinceCode,
+          cityCode,
+          districtCode,
+          ...namesOf(provinceCode, cityCode, districtCode),
+        });
       },
       resolvedCivil: () => {
-        const { civil, trueSolar, cityId } = get();
-        if (!trueSolar) return civil;
-        const city = CITIES.find((c) => c.id === cityId) ?? CITIES[0];
-        return applyTrueSolar(civil, city.lng);
+        const s = get();
+        if (!s.trueSolar) return s.civil;
+        const lng = locationLng(s.provinceCode, s.districtCode);
+        const fallback = CITIES.find((c) => c.id === s.cityId)?.lng ?? lng;
+        return applyTrueSolar(s.civil, lng || fallback);
       },
       compute: () => {
         const s = get();
@@ -104,11 +152,19 @@ export const useAppStore = create<AppStore>()(
         casting: s.casting,
         lotsMonth: s.lotsMonth,
         lotsJu: s.lotsJu,
+        lotsCode: s.lotsCode,
+        elder: s.elder,
         mode: s.mode,
         personName: s.personName,
         gender: s.gender,
         birthYear: s.birthYear,
         eventId: s.eventId,
+        provinceCode: s.provinceCode,
+        cityCode: s.cityCode,
+        districtCode: s.districtCode,
+        province: s.province,
+        city: s.city,
+        district: s.district,
       }),
     },
   ),

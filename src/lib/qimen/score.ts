@@ -23,6 +23,8 @@ import {
   BRANCH_SIX_HE,
 } from "./constants";
 import { changshengOf, wuxingRelation, yearStemOf } from "./calendar";
+import { detectClassicPatterns } from "./classic";
+import { enrichEventScore } from "./reading";
 import { findPalaceBy, findStemOnHeaven } from "./chart";
 import type {
   EventId,
@@ -337,7 +339,7 @@ export function scoreEvent(
     });
   }
 
-  const patterns = detectPatterns(palace);
+  const patterns = detectClassicPatterns(chart, palace);
   for (const p of patterns) {
     factors.push({
       key: `pt-${p.name}`,
@@ -395,23 +397,29 @@ export function scoreEvent(
     end,
   });
 
-  return {
+  return enrichEventScore(
+    chart,
+    palace,
     eventId,
-    name: def.name,
-    brief: def.brief,
-    palaceId,
-    score,
-    probability: probabilityOf(score),
-    level: luckLevel(score),
-    phases: {
-      start: { score: Math.round(start), summary: phaseText("start", palace) },
-      process: { score: Math.round(process), summary: phaseText("process", palace) },
-      end: { score: Math.round(end), summary: phaseText("end", palace) },
+    {
+      eventId,
+      name: def.name,
+      brief: def.brief,
+      palaceId,
+      score,
+      probability: probabilityOf(score),
+      level: luckLevel(score),
+      phases: {
+        start: { score: Math.round(start), summary: phaseText("start", palace) },
+        process: { score: Math.round(process), summary: phaseText("process", palace) },
+        end: { score: Math.round(end), summary: phaseText("end", palace) },
+      },
+      factors: factors.sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight)),
+      patterns: patterns.map((p) => p.name),
+      reading,
     },
-    factors: factors.sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight)),
-    patterns: patterns.map((p) => p.name),
-    reading,
-  };
+    patterns,
+  );
 }
 
 function phaseText(phase: "start" | "process" | "end", palace: Palace): string {

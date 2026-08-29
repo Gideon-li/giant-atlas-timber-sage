@@ -1,10 +1,11 @@
-import { i as __toESM, n as __exportAll } from "../_runtime.mjs";
+import { o as __toESM, r as __exportAll } from "../_runtime.mjs";
 import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
-import { _ as useRouter, f as createRouter, g as createRootRoute, h as createFileRoute, l as Scripts, m as lazyRouteComponent, p as Outlet, u as HeadContent, v as require_jsx_runtime } from "../_libs/@tanstack/react-router+[...].mjs";
+import { b as require_jsx_runtime, f as createRouter, g as createRootRoute, h as createFileRoute, l as Scripts, m as lazyRouteComponent, p as Outlet, u as HeadContent, y as useRouter } from "../_libs/@tanstack/react-router+[...].mjs";
+import { L as string, N as number, P as object, R as union, j as literal } from "../_libs/@better-auth/core+[...].mjs";
+import { n as auth } from "./server-CqRAn7m7.mjs";
 import { n as TriangleAlert } from "../_libs/lucide-react.mjs";
-import { a as union, i as string, n as number, r as object, t as literal } from "../_libs/zod.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-QCK0JOci.js
-var router_QCK0JOci_exports = /* @__PURE__ */ __exportAll({ getRouter: () => getRouter });
+//#region node_modules/.nitro/vite/services/ssr/assets/router-CiZRf-Oz.js
+var router_CiZRf_Oz_exports = /* @__PURE__ */ __exportAll({ getRouter: () => getRouter });
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function AppErrorComponent({ error }) {
@@ -273,9 +274,9 @@ function PreviewHostBridge() {
 	}, [router]);
 	return null;
 }
-var styles_default = "/assets/styles-BX49dwiN.css";
+var styles_default = "/assets/styles-CO2gY4ra.css";
 var APP_NAME = "奇门权衡";
-var Route$1 = createRootRoute({
+var Route$5 = createRootRoute({
 	head: () => ({
 		meta: [
 			{ charSet: "utf-8" },
@@ -323,13 +324,46 @@ var Route$1 = createRootRoute({
 		] })]
 	})
 });
-var $$splitComponentImporter = () => import("./routes-NksdgfHm.mjs");
-var rootRouteChildren = { IndexRoute: createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter, "component") }).update({
-	id: "/",
-	path: "/",
-	getParentRoute: () => Route$1
-}) };
-var routeTree = Route$1._addFileChildren(rootRouteChildren)._addFileTypes();
+var $$splitComponentImporter$3 = () => import("./routes-CHTI8mgp.mjs");
+var Route$4 = createFileRoute("/")({ component: lazyRouteComponent($$splitComponentImporter$3, "component") });
+var $$splitComponentImporter$2 = () => import("./admin-DBC2lAkl.mjs");
+var Route$3 = createFileRoute("/admin")({ component: lazyRouteComponent($$splitComponentImporter$2, "component") });
+var $$splitComponentImporter$1 = () => import("./login-CY4_nJVT.mjs");
+var Route$2 = createFileRoute("/login")({ component: lazyRouteComponent($$splitComponentImporter$1, "component") });
+var $$splitComponentImporter = () => import("./thesis-Dmg7hehl.mjs");
+var Route$1 = createFileRoute("/thesis")({ component: lazyRouteComponent($$splitComponentImporter, "component") });
+var Route = createFileRoute("/api/auth/$")({ server: { handlers: {
+	GET: ({ request }) => auth.handler(request),
+	POST: ({ request }) => auth.handler(request)
+} } });
+var rootRouteChildren = {
+	IndexRoute: Route$4.update({
+		id: "/",
+		path: "/",
+		getParentRoute: () => Route$5
+	}),
+	AdminRoute: Route$3.update({
+		id: "/admin",
+		path: "/admin",
+		getParentRoute: () => Route$5
+	}),
+	LoginRoute: Route$2.update({
+		id: "/login",
+		path: "/login",
+		getParentRoute: () => Route$5
+	}),
+	ThesisRoute: Route$1.update({
+		id: "/thesis",
+		path: "/thesis",
+		getParentRoute: () => Route$5
+	}),
+	ApiAuthSplatRoute: Route.update({
+		id: "/api/auth/$",
+		path: "/api/auth/$",
+		getParentRoute: () => Route$5
+	})
+};
+var routeTree = Route$5._addFileChildren(rootRouteChildren)._addFileTypes();
 function getRouter() {
 	return createRouter({
 		routeTree,
@@ -337,4 +371,4 @@ function getRouter() {
 	});
 }
 //#endregion
-export { getRouter, router_QCK0JOci_exports as t };
+export { getRouter, router_CiZRf_Oz_exports as t };
