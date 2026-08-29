@@ -213,7 +213,7 @@ function AdminInner() {
   return (
     <main className="min-h-dvh bg-bg text-fg">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+        <div className="page-shell flex max-w-5xl flex-wrap items-center justify-between gap-3 py-4">
           <div>
             <p className="font-display text-lg">管理后台</p>
             <p className="text-xs text-muted">{user?.primaryEmail}</p>
@@ -224,7 +224,7 @@ function AdminInner() {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-6">
+      <div className="page-shell flex max-w-5xl flex-col gap-8 py-6">
         {err ? <p className="text-sm text-inauspicious-fg">{err}</p> : null}
 
         <section className="rounded-xl border border-border bg-surface p-4">

@@ -81,7 +81,7 @@ function OverallCard({ f }: { f: PeriodFortune }) {
         用神 {palace.bagua}
         {palace.id}宫值符 · {palace.god ?? "无神"} / {palace.star} / {palace.gate ?? "无门"}
       </p>
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="fit-phases mt-4">
         {(
           [
             ["开始 · 神", f.phases.start],
@@ -216,8 +216,8 @@ export function FortunePanel({
         <p className="mt-1 text-xs text-muted">条越高越顺。高亮为当前所处。点击上方年/月/日可对照。</p>
         <div
           className={cn(
-            "mt-2 grid gap-1.5",
-            scope === "month" ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-3 sm:grid-cols-4",
+            "mt-2",
+            scope === "month" ? "grid grid-cols-1 gap-1.5 min-[420px]:grid-cols-3" : "fit-slices",
           )}
         >
           {f.slices.map((s) => (

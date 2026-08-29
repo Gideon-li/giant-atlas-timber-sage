@@ -94,7 +94,7 @@ export function WeatherPanel({ chart }: { chart: QimenChart }) {
               </Badge>
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="fit-phases mt-4">
             {fc.probs.map((p) => (
               <div key={p.name} className="rounded-md border border-border bg-elevated p-2.5">
                 <p className="text-[11px] text-subtle">{p.name}</p>

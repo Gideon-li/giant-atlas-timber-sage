@@ -80,7 +80,7 @@ function ThesisPage() {
   return (
     <main className="min-h-dvh bg-bg text-fg">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+        <div className="page-shell flex max-w-3xl flex-wrap items-center justify-between gap-3 py-4">
           <div className="flex gap-3 text-xs">
             <Link to="/" className="text-muted hover:text-fg">
               返回起盘
@@ -108,7 +108,7 @@ function ThesisPage() {
           </div>
         </div>
       </header>
-      <article className="mx-auto max-w-3xl px-4 py-8">
+      <article className="page-shell max-w-3xl py-8">
         <p className="text-xs text-subtle">博士学位论文体例 · 仅管理员可见</p>
         <h1 className="mt-2 font-display text-2xl leading-snug text-fg">{PAPER_TITLE}</h1>
         <p className="mt-3 text-xs text-muted">

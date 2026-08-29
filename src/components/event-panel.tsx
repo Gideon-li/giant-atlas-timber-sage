@@ -106,7 +106,7 @@ export function EventDetail({
         {palace.id}宫 · {palace.god ?? "无神"} / {palace.star} / {palace.gate ?? "无门"}
       </p>
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
+      <div className="fit-phases mt-4">
         {(
           [
             ["开始 · 神", score.phases.start],

@@ -13,7 +13,7 @@ export function LocationPicker() {
   return (
     <div className="mt-4 border-t border-border pt-4">
       <p className="text-xs text-muted">地理位置（中国）</p>
-      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="fit-fields mt-2">
         <label className="flex flex-col gap-1 text-xs text-muted">
           省 / 直辖市
           <select
@@ -25,7 +25,7 @@ export function LocationPicker() {
               const a = areasOf(p, c)[0]?.code ?? "";
               setLocation(p, c, a);
             }}
-            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+            className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
           >
             {provinces().map((p) => (
               <option key={p.code} value={p.code}>
@@ -43,7 +43,7 @@ export function LocationPicker() {
               const a = areasOf(provinceCode, c)[0]?.code ?? "";
               setLocation(provinceCode, c, a);
             }}
-            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+            className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
           >
             {cities.map((c) => (
               <option key={c.code} value={c.code}>
@@ -57,7 +57,7 @@ export function LocationPicker() {
           <select
             value={districtCode}
             onChange={(e) => setLocation(provinceCode, cityCode, e.target.value)}
-            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+            className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
           >
             {areas.map((a) => (
               <option key={a.code} value={a.code}>

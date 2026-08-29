@@ -36,10 +36,10 @@ function AuthSlot() {
       <div className="flex items-center gap-1 sm:gap-2">
         {admin ? (
           <>
-            <Link to="/admin" className="flex h-10 items-center px-2 text-xs text-muted hover:text-fg">
+            <Link to="/admin" className="hidden h-10 items-center px-2 text-xs text-muted hover:text-fg sm:flex">
               管理
             </Link>
-            <Link to="/thesis" className="flex h-10 items-center px-2 text-xs text-muted hover:text-fg">
+            <Link to="/thesis" className="hidden h-10 items-center px-2 text-xs text-muted hover:text-fg sm:flex">
               论文
             </Link>
           </>
@@ -152,14 +152,14 @@ export function AppShell() {
 
   return (
     <div className="min-h-dvh bg-bg text-fg">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div>
-            <p className="font-display text-xl tracking-wide text-fg">奇门权衡</p>
-            <p className="text-xs text-muted">以数权衡时空 · 以盘决断人事</p>
+      <header className="site-header sticky top-0 z-30 border-b border-border bg-bg">
+        <div className="page-shell flex items-center justify-between gap-2 py-2.5 sm:gap-4 sm:py-4">
+          <div className="min-w-0">
+            <p className="truncate font-display text-lg tracking-wide text-fg sm:text-xl">奇门权衡</p>
+            <p className="hidden text-xs text-muted sm:block">以数权衡时空 · 以盘决断人事</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right text-xs text-subtle sm:block">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <div className="hidden text-right text-xs text-subtle lg:block">
               <p>
                 {chart.timeLabel} 北京时间 · {chart.hourName}
               </p>
@@ -172,7 +172,7 @@ export function AppShell() {
               type="button"
               onClick={() => setField("elder", !elder)}
               className={cn(
-                "flex h-10 items-center rounded-md border px-3 text-xs",
+                "flex h-10 items-center rounded-md border px-2.5 text-xs sm:px-3",
                 elder ? "border-primary bg-primary text-primary-fg" : "border-border bg-elevated text-muted",
               )}
             >
@@ -183,35 +183,32 @@ export function AppShell() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8">
+      <main className="page-shell app-main py-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:py-8 lg:pb-8">
         <QueryForm />
 
-        <div className="mt-4 rounded-lg border border-border bg-elevated px-4 py-3 text-sm text-muted sm:hidden">
-          {chart.timeLabel} · {chart.hourName} · {chart.ju.label}
-          <br />
-          {chart.pillars.year.name} {chart.pillars.month.name} {chart.pillars.day.name}{" "}
-          {chart.pillars.hour.name}
-        </div>
-
-        <nav className="mt-5 flex gap-1 overflow-x-auto rounded-md border border-border bg-surface p-1 lg:hidden">
+        <nav
+          className="dock-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-border bg-bg pt-1 lg:hidden"
+          style={{ paddingBottom: "max(0.35rem, env(safe-area-inset-bottom, 0px))" }}
+          aria-label="页面"
+        >
           {tabs.map(([id, label, Icon]) => (
             <button
               key={id}
               type="button"
               onClick={() => setField("tab", id)}
               className={cn(
-                "flex h-11 min-w-16 flex-1 items-center justify-center gap-1.5 rounded-sm px-2 text-sm",
-                tab === id ? "bg-primary text-primary-fg" : "text-muted",
+                "flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-[11px] leading-tight",
+                tab === id ? "text-fg" : "text-muted",
               )}
             >
-              <Icon className="size-4" />
-              {label}
+              <Icon className="size-5" />
+              <span className="truncate">{label}</span>
             </button>
           ))}
         </nav>
 
-        <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-          <section className={cn(tab === "board" ? "block" : "hidden lg:block")}>
+        <div className="mt-4 grid min-w-0 gap-6 lg:mt-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] xl:gap-8">
+          <section className={cn("board-slot min-w-0", tab === "board" ? "block" : "hidden lg:block")}>
             <QimenBoard
               chart={boardChart}
               selected={selectedPalace}
@@ -221,8 +218,8 @@ export function AppShell() {
             />
           </section>
 
-          <section className={cn(tab === "board" ? "hidden lg:block" : "block")}>
-            <div className="mb-4 hidden gap-1 rounded-md border border-border bg-surface p-1 lg:flex">
+          <section className={cn("content-slot min-w-0", tab === "board" ? "hidden lg:block" : "block")}>
+            <div className="desktop-tabs mb-4 hidden gap-1 rounded-md border border-border bg-surface p-1 lg:flex">
               {(
                 [
                   ["events", "事项"],
@@ -237,7 +234,7 @@ export function AppShell() {
                   type="button"
                   onClick={() => setField("tab", id)}
                   className={cn(
-                    "h-10 flex-1 rounded-sm text-sm",
+                    "h-10 min-w-0 flex-1 rounded-sm text-sm",
                     tab === id ? "bg-primary text-primary-fg" : "text-muted hover:text-fg",
                   )}
                 >
@@ -309,7 +306,7 @@ export function AppShell() {
           </section>
         </div>
 
-        <p className="mt-10 mb-6 text-center text-xs leading-5 text-subtle">
+        <p className="mt-10 mb-4 text-center text-xs leading-5 text-pretty text-subtle lg:mb-6">
           拆补时盘或求签定局。年运看立春交节，月运看当月节气，日运看午时，时辰起伏看十二时盘。神应开始、星应过程、门应收局。方位用事从八门古法。天气按中国每个区县单独逻辑回归，数据 2020–2026。事项门星神已按全国天气信度校准。论文与训练数据需管理员登录后，在右上角「管理」或「论文」下载。供学习，并非定论。
         </p>
       </main>

@@ -29,6 +29,7 @@
   --radius-lg: 20px;
   --radius-xl: 28px;
   --shadow-panel: 0 0 0 1px #2a2620;
+  --page-max: 72rem;
 }
 
 @layer base {
@@ -42,6 +43,8 @@
     color-scheme: dark;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
+    max-width: 100%;
   }
 
   html[data-elder="1"] {
@@ -61,9 +64,16 @@
     line-height: 1.6;
   }
 
+  html[data-elder="1"] .dock-nav button {
+    min-height: 0;
+    font-size: 0.7rem;
+  }
+
   body {
     margin: 0;
     min-height: 100dvh;
+    max-width: 100%;
+    overflow-x: clip;
     background: var(--color-bg);
     color: var(--color-fg);
     font-family: var(--font-sans);
@@ -90,6 +100,8 @@
   textarea {
     font-family: inherit;
     color-scheme: dark;
+    min-width: 0;
+    max-width: 100%;
   }
 
   input[type="date"],
@@ -116,9 +128,123 @@
   background-size: 12px 12px;
 }
 
+@layer components {
+  .page-shell {
+    width: min(var(--page-max), 100%);
+    margin-inline: auto;
+    padding-inline: max(1rem, env(safe-area-inset-left, 0px))
+      max(1rem, env(safe-area-inset-right, 0px));
+  }
+
+  @media (min-width: 640px) {
+    .page-shell {
+      padding-inline: max(1.5rem, env(safe-area-inset-left, 0px))
+        max(1.5rem, env(safe-area-inset-right, 0px));
+    }
+  }
+
+  .fit-hours {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 2.5rem), 1fr));
+    gap: 0.375rem;
+  }
+
+  .fit-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+    gap: 0.75rem;
+  }
+
+  .fit-people {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+    gap: 0.75rem;
+  }
+
+  .fit-phases {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+    gap: 0.5rem;
+  }
+
+  .fit-slices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.5rem), 1fr));
+    gap: 0.375rem;
+  }
+
+  .luoshu {
+    container-type: inline-size;
+    container-name: luoshu;
+  }
+
+  .site-header {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .dock-nav {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .luoshu-cell {
+    min-height: 5.5rem;
+    min-height: clamp(5.5rem, 28cqi, 9.5rem);
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  @container luoshu (max-width: 20rem) {
+    .luoshu-cell {
+      padding: 0.35rem;
+      min-height: 5.15rem;
+    }
+  }
+
+  @media (max-height: 480px) {
+    .site-header {
+      position: relative;
+    }
+
+    .luoshu-cell {
+      min-height: 4.6rem;
+    }
+  }
+
+  @media (min-width: 768px) and (min-height: 640px) {
+    .board-slot,
+    .content-slot {
+      display: block !important;
+    }
+
+    .dock-nav {
+      display: none !important;
+    }
+
+    .desktop-tabs {
+      display: flex !important;
+    }
+
+    .app-main {
+      padding-bottom: 2rem;
+    }
+  }
+}
+
 .thesis-body .thesis-table th:first-child,
 .thesis-body .thesis-table td:first-child {
   text-align: left;
+}
+
+.thesis-body {
+  overflow-wrap: anywhere;
+}
+
+.thesis-body table,
+.thesis-body .thesis-table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .thesis-body .formula {

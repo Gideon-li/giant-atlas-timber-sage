@@ -43,7 +43,7 @@ function Login() {
   };
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-bg px-4 py-10 text-fg">
+    <main className="grid min-h-dvh place-items-center bg-bg px-[max(1rem,env(safe-area-inset-left,0px))] py-10 pb-[max(2.5rem,env(safe-area-inset-bottom,0px))] text-fg">
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6 shadow-[var(--shadow-panel)]">
         <p className="font-display text-xl">奇门权衡</p>
         <p className="mt-1 text-xs text-muted">可用手机号或邮箱。指定管理员手机号登录后进入后台，下载论文与数据。</p>

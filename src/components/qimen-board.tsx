@@ -27,7 +27,7 @@ function Cell({
       type="button"
       onClick={() => onSelect(palace.id)}
       className={cn(
-        "luoshu-grid relative flex min-h-[118px] flex-col items-stretch rounded-md border p-2 text-left transition-[border-color,background-color] sm:min-h-[132px] sm:p-2.5",
+        "luoshu-grid luoshu-cell relative flex flex-col items-stretch rounded-md border p-2 text-left transition-[border-color,background-color] sm:p-2.5",
         active ? "border-primary bg-elevated" : "border-border bg-surface hover:border-border-strong",
         palace.isZhiFu && "ring-1 ring-primary/40",
         isCenter && "bg-elevated",
@@ -92,10 +92,10 @@ export function QimenBoard({
 }) {
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-        <div>
+      <div className="mb-3 flex min-w-0 flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0">
           <h2 className="font-display text-lg text-fg">洛书九宫</h2>
-          <p className="text-xs text-muted">
+          <p className="text-xs leading-5 text-muted">
             {caption ? `${caption} · ` : ""}
             {chart.ju.label} · 旬首{chart.meta.xunShou}（{chart.meta.xunYi}）· 空亡
             {chart.meta.xunKong.join("")} · 值使{chart.meta.zhiShiGate}
@@ -103,9 +103,9 @@ export function QimenBoard({
             {chart.meta.fanYin ? " · 反吟" : ""}
           </p>
         </div>
-        <p className="text-[11px] text-subtle">南上北下 · 点宫查看</p>
+        <p className="shrink-0 text-[11px] text-subtle">南上北下 · 点宫查看</p>
       </div>
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+      <div className="luoshu grid grid-cols-3 gap-1.5 sm:gap-2">
         {BOARD_ORDER.map((id) => (
           <Cell
             key={id}

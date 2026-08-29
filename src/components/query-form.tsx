@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { LocationPicker } from "@/components/location-picker";
 import { EVENTS, HOUR_NAMES } from "@/lib/qimen/constants";
 import { dunFromSolarMonth, hourToZhiIndex, MONTH_NAMES } from "@/lib/qimen/calendar";
@@ -32,6 +33,9 @@ export function QueryForm() {
   const gender = useAppStore((s) => s.gender);
   const birthYear = useAppStore((s) => s.birthYear);
   const eventId = useAppStore((s) => s.eventId);
+  const district = useAppStore((s) => s.district);
+  const city = useAppStore((s) => s.city);
+  const [open, setOpen] = useState(false);
 
   const dateValue = `${civil.year}-${pad(civil.month)}-${pad(civil.day)}`;
   const timeValue = `${pad(civil.hour)}:${pad(civil.minute)}`;
@@ -74,67 +78,87 @@ export function QueryForm() {
 
   const shownJu = flashJu ?? lotsJu;
   const isLots = casting === "lots";
+  const locShort = district || city;
+  const summary = isLots
+    ? `求签 · ${dunLabel}${shownJu}局 · ${HOUR_NAMES[zhiIdx]}时 · ${locShort}`
+    : `拆补 · ${civil.month}月${civil.day}日 ${HOUR_NAMES[zhiIdx]}时 · ${locShort}`;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-4 shadow-[var(--shadow-panel)] sm:p-5">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="font-display text-sm text-fg">起盘</p>
-            <p className="mt-0.5 text-xs text-muted">
-              {isLots
-                ? "按月定阴阳遁，抽一局为用。时辰仍定值符值使。"
-                : "时间用北京时间。时辰一换，盘面与权重即变。"}
-            </p>
-          </div>
+    <section className="rounded-xl border border-border bg-surface p-3 shadow-[var(--shadow-panel)] sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-display text-sm text-fg">起盘</p>
+          <p className="mt-0.5 text-xs leading-5 text-muted">
+            {summary}
+            <span className="text-subtle">
+              {" "}
+              · {mode === "scan" ? "全盘扫描" : "定向问事"}
+            </span>
+          </p>
         </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex h-10 shrink-0 items-center gap-1 rounded-md border border-border bg-elevated px-3 text-sm text-fg lg:hidden"
+          aria-expanded={open}
+        >
+          {open ? "收起" : "改盘"}
+          <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
+        </button>
+      </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex rounded-md border border-border bg-elevated p-0.5">
-            {(
-              [
-                ["chaibu", "拆补时盘"],
-                ["lots", "求签定局"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => {
-                  setField("casting", id);
-                  if (id === "lots") setLotsMonth(civil.month);
-                }}
-                className={cn(
-                  "h-10 rounded-sm px-3 text-sm transition-colors",
-                  casting === id ? "bg-primary text-primary-fg" : "text-muted hover:text-fg",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex rounded-md border border-border bg-elevated p-0.5">
-            {(
-              [
-                ["scan", "全盘扫描"],
-                ["ask", "定向问事"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setField("mode", id)}
-                className={cn(
-                  "h-10 rounded-sm px-3 text-sm transition-colors",
-                  mode === id ? "bg-primary text-primary-fg" : "text-muted hover:text-fg",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+      <div className="mt-3 flex flex-col gap-2 min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-between">
+        <div className="flex min-w-0 rounded-md border border-border bg-elevated p-0.5">
+          {(
+            [
+              ["chaibu", "拆补时盘"],
+              ["lots", "求签定局"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setField("casting", id);
+                if (id === "lots") setLotsMonth(civil.month);
+              }}
+              className={cn(
+                "h-10 min-w-0 flex-1 rounded-sm px-2 text-sm transition-colors sm:px-3",
+                casting === id ? "bg-primary text-primary-fg" : "text-muted hover:text-fg",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex min-w-0 rounded-md border border-border bg-elevated p-0.5">
+          {(
+            [
+              ["scan", "全盘扫描"],
+              ["ask", "定向问事"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setField("mode", id)}
+              className={cn(
+                "h-10 min-w-0 flex-1 rounded-sm px-2 text-sm transition-colors sm:px-3",
+                mode === id ? "bg-primary text-primary-fg" : "text-muted hover:text-fg",
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
+
+      <div className={cn(open ? "block" : "hidden lg:block")}>
+      <p className="mt-3 hidden text-xs text-muted lg:block">
+        {isLots
+          ? "按月定阴阳遁，抽一局为用。时辰仍定值符值使。"
+          : "时间用北京时间。时辰一换，盘面与权重即变。"}
+      </p>
 
       {isLots ? (
         <div className="mt-4 border-t border-border pt-4">
@@ -153,7 +177,7 @@ export function QueryForm() {
             </Button>
           </div>
 
-          <div className="mt-3 grid grid-cols-6 gap-1.5 sm:grid-cols-12">
+          <div className="fit-hours mt-3">
             {MONTH_NAMES.map((name, i) => {
               const m = i + 1;
               return (
@@ -230,8 +254,8 @@ export function QueryForm() {
         </div>
       ) : null}
 
-      <div className={cn("mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4", isLots && "border-t border-border pt-4")}>
-        <label className="col-span-2 flex min-h-11 flex-col gap-1 text-xs text-muted sm:col-span-1">
+      <div className={cn("fit-fields mt-4", isLots && "border-t border-border pt-4")}>
+        <label className="flex min-h-11 flex-col gap-1 text-xs text-muted">
           日期
           <input
             type="date"
@@ -243,7 +267,7 @@ export function QueryForm() {
                 if (isLots) setLotsMonth(m);
               }
             }}
-            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+            className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
           />
         </label>
         <label className="flex min-h-11 flex-col gap-1 text-xs text-muted">
@@ -257,7 +281,7 @@ export function QueryForm() {
                 setCivil({ ...civil, hour: h, minute: mi });
               }
             }}
-            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+            className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
           />
         </label>
         <div className="flex items-end">
@@ -286,7 +310,7 @@ export function QueryForm() {
 
       <div className="mt-4">
         <p className="mb-2 text-xs text-muted">时辰</p>
-        <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-12">
+        <div className="fit-hours">
           {HOUR_NAMES.map((name, i) => (
             <button
               key={name}
@@ -307,14 +331,14 @@ export function QueryForm() {
 
       <LocationPicker />
 
-      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 sm:grid-cols-4">
+      <div className="fit-people mt-4 border-t border-border pt-4">
         <label className="flex flex-col gap-1 text-xs text-muted">
           称呼
           <input
             value={personName}
             onChange={(e) => setField("personName", e.target.value)}
             placeholder="可空"
-            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none placeholder:text-subtle focus:border-ring"
+            className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none placeholder:text-subtle focus:border-ring"
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-muted">
@@ -322,7 +346,7 @@ export function QueryForm() {
           <select
             value={gender}
             onChange={(e) => setField("gender", e.target.value as "male" | "female")}
-            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+            className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
           >
             <option value="male">男</option>
             <option value="female">女</option>
@@ -335,7 +359,7 @@ export function QueryForm() {
             value={birthYear}
             onChange={(e) => setField("birthYear", e.target.value.replace(/[^\d]/g, "").slice(0, 4))}
             placeholder="如 1992"
-            className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none placeholder:text-subtle focus:border-ring"
+            className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none placeholder:text-subtle focus:border-ring"
           />
         </label>
         {mode === "ask" ? (
@@ -344,7 +368,7 @@ export function QueryForm() {
             <select
               value={eventId}
               onChange={(e) => setField("eventId", e.target.value as typeof eventId)}
-              className="h-11 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+              className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
             >
               {EVENTS.map((ev) => (
                 <option key={ev.id} value={ev.id}>
@@ -354,10 +378,11 @@ export function QueryForm() {
             </select>
           </label>
         ) : (
-          <p className="flex items-end text-xs leading-5 text-muted sm:col-span-1">
+          <p className="flex items-end text-xs leading-5 text-muted">
             填写出生年后，全盘扫描另计本命年、冲太岁、命干落宫，不改各事项用神。
           </p>
         )}
+      </div>
       </div>
     </section>
   );

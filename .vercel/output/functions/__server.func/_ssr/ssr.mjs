@@ -117,7 +117,7 @@ var HEADERS = { TSS_SHELL: "X-TSS_SHELL" };
 * the dev styles URL for route-scoped CSS collection.
 */
 async function getStartManifest(matchedRoutes) {
-	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-BuA2AOeL.mjs");
+	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-DYQbHgIO.mjs");
 	const startManifest = tsrStartManifest();
 	let routes = startManifest.routes;
 	routes[rootRouteId];
@@ -137,33 +137,45 @@ async function getStartManifest(matchedRoutes) {
 	};
 }
 var manifest = {
+	"1054b1b9297494f7440b5d035424ee3b17562c0e520435a41e7bfeec13704ea5": {
+		functionName: "adminPurgeOtherAccounts_createServerFn_handler",
+		importer: () => import("./app-DnGKz_hg.mjs")
+	},
 	"19a93ccf262792baf4150111740d53b39c754c0d756bddfc22f13361cf8b5b79": {
 		functionName: "getMyProfile_createServerFn_handler",
-		importer: () => import("./app-rQMFnIZb.mjs")
+		importer: () => import("./app-DnGKz_hg.mjs")
+	},
+	"69f99ee1172c0d5656b62ff61183be10dab05cac3657e9c37924f479e1a19c4a": {
+		functionName: "adminListAccounts_createServerFn_handler",
+		importer: () => import("./app-DnGKz_hg.mjs")
 	},
 	"a0ec1d1bdda5c62a5dfd022570f55048695026105150e1c3748156982a5197da": {
 		functionName: "ensureProfile_createServerFn_handler",
-		importer: () => import("./app-rQMFnIZb.mjs")
+		importer: () => import("./app-DnGKz_hg.mjs")
+	},
+	"b45844c3329b982f6482e0c7b4054ffbdb5cef7860209285d9cb6266651b5ef1": {
+		functionName: "adminDeleteAccount_createServerFn_handler",
+		importer: () => import("./app-DnGKz_hg.mjs")
 	},
 	"b72261f7753148deed9c77e5c07e7381dd38592370589574eccdf5cdec3a0687": {
 		functionName: "adminListFeedback_createServerFn_handler",
-		importer: () => import("./app-rQMFnIZb.mjs")
+		importer: () => import("./app-DnGKz_hg.mjs")
 	},
 	"bb88af8b2b58383634fe504efc9d5d8fd1873b87bc25554092364a7568e60f56": {
 		functionName: "listMyFeedback_createServerFn_handler",
-		importer: () => import("./app-rQMFnIZb.mjs")
+		importer: () => import("./app-DnGKz_hg.mjs")
 	},
 	"d04e0484c40b5ec252a4b2eeee6bdb71cde9fa3b76501a77d79c65a2bf35e016": {
 		functionName: "getWeatherMetrics_createServerFn_handler",
-		importer: () => import("./app-rQMFnIZb.mjs")
+		importer: () => import("./app-DnGKz_hg.mjs")
 	},
 	"de89ceb508318e989eb7eb43c0d78ff4a56c1d60f512160e3e1ceb83ab7ddecf": {
 		functionName: "runWeatherTraining_createServerFn_handler",
-		importer: () => import("./app-rQMFnIZb.mjs")
+		importer: () => import("./app-DnGKz_hg.mjs")
 	},
 	"df8dcfcb2cfb379e1270462e650c62ce1e5bba75977b5927c46de2df369caa6e": {
 		functionName: "submitFeedback_createServerFn_handler",
-		importer: () => import("./app-rQMFnIZb.mjs")
+		importer: () => import("./app-DnGKz_hg.mjs")
 	}
 };
 async function getServerFnById(id, access) {
@@ -1433,7 +1445,7 @@ var getBaseManifest = getProdBaseManifest;
 var createEarlyHintsForRequest = createEarlyHintsCollector;
 async function loadEntries() {
 	const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-		import("./router-CiZRf-Oz.mjs").then((n) => n.t),
+		import("./router-Coge-u_1.mjs").then((n) => n.t),
 		import("./start-5Z2QO8AU.mjs"),
 		import("./empty-plugin-adapters-D9UWiqvJ.mjs")
 	]);

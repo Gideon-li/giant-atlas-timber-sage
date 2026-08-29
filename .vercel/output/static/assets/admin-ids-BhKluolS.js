@@ -1,0 +1,1 @@
+var e=[`18858839671`],t=`qimen.local`;function n(e){return/^1\d{10}$/.test(e.trim())}function r(e){let r=e.trim();return n(r)?`${r}@${t}`:r}export{r as n,e as t};
