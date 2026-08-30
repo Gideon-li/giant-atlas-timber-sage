@@ -8,6 +8,7 @@ import { peopleRelations, scoreAllEvents, scoreEvent } from "@/lib/qimen/score";
 import { natalView, type NatalView } from "@/lib/qimen/natal";
 import type { FortuneKind } from "@/lib/qimen/fortune";
 import { areasOf, citiesOf, DEFAULT_LOCATION, locationLng, provinces } from "@/lib/qimen/china";
+import { pathEventId, subjectName, type CareerTrack, type SubjectKind } from "@/lib/qimen/subject";
 import type { EventId, EventScore, Gender, PalaceId, PeopleLink, QimenChart } from "@/lib/qimen/types";
 
 export type Mode = "scan" | "ask";
@@ -37,6 +38,8 @@ export type QueryState = {
   province: string;
   city: string;
   district: string;
+  subjectKind: SubjectKind;
+  careerTrack: CareerTrack;
 };
 
 type AppStore = QueryState & {
@@ -47,6 +50,7 @@ type AppStore = QueryState & {
   drawLots: () => void;
   applyLotsCode: (code: string) => void;
   setLocation: (provinceCode: string, cityCode: string, districtCode: string) => void;
+  setCareerTrack: (track: CareerTrack) => void;
   resolvedCivil: () => CivilTime;
   compute: () => {
     chart: QimenChart;
@@ -95,6 +99,8 @@ export const useAppStore = create<AppStore>()(
       province: DEFAULT_LOCATION.province,
       city: DEFAULT_LOCATION.city,
       district: DEFAULT_LOCATION.district,
+      subjectKind: "person",
+      careerTrack: "career",
       setCivil: (civil) => set({ civil }),
       setField: (key, value) => set({ [key]: value } as Partial<QueryState>),
       useNow: () => {
@@ -125,6 +131,12 @@ export const useAppStore = create<AppStore>()(
           ...namesOf(provinceCode, cityCode, districtCode),
         });
       },
+      setCareerTrack: (track) =>
+        set((s) => ({
+          careerTrack: track,
+          eventId:
+            s.eventId === "career" || s.eventId === "study" ? pathEventId(track) : s.eventId,
+        })),
       resolvedCivil: () => {
         const s = get();
         if (!s.trueSolar) return s.civil;
@@ -137,10 +149,20 @@ export const useAppStore = create<AppStore>()(
         const juOverride =
           s.casting === "lots" ? getJuFromLots(s.lotsMonth || s.civil.month, s.lotsJu || 5) : undefined;
         const chart = buildChart(s.resolvedCivil(), juOverride);
-        const birthYear = s.birthYear.trim() ? Number(s.birthYear) : null;
+        const place = s.subjectKind !== "person";
+        const birthYear = !place && s.birthYear.trim() ? Number(s.birthYear) : null;
+        const label = subjectName(s.subjectKind, {
+          personName: s.personName,
+          province: s.province,
+          city: s.city,
+          district: s.district,
+        });
         const opts = {
           gender: s.gender,
           birthYear: birthYear && birthYear >= 1920 && birthYear <= 2030 ? birthYear : null,
+          subjectKind: s.subjectKind,
+          careerTrack: s.careerTrack,
+          subjectLabel: label,
         };
         const events = scoreAllEvents(chart, opts);
         const focus = scoreEvent(chart, s.eventId, opts);
@@ -172,6 +194,8 @@ export const useAppStore = create<AppStore>()(
         province: s.province,
         city: s.city,
         district: s.district,
+        subjectKind: s.subjectKind,
+        careerTrack: s.careerTrack,
       }),
     },
   ),

@@ -12,6 +12,7 @@ import { useAppStore } from "@/lib/store";
 import { beijingNow } from "@/lib/qimen/calendar";
 import { buildFortunePack } from "@/lib/qimen/fortune";
 import { mergeMarks } from "@/lib/qimen/natal";
+import { isPlaceSubject, subjectName } from "@/lib/qimen/subject";
 import { cn } from "@/lib/utils";
 import type { PalaceId } from "@/lib/qimen/types";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +82,11 @@ export function AppShell() {
   const provinceCode = useAppStore((s) => s.provinceCode);
   const districtCode = useAppStore((s) => s.districtCode);
   const fortuneScope = useAppStore((s) => s.fortuneScope);
+  const subjectKind = useAppStore((s) => s.subjectKind);
+  const careerTrack = useAppStore((s) => s.careerTrack);
+  const province = useAppStore((s) => s.province);
+  const city = useAppStore((s) => s.city);
+  const district = useAppStore((s) => s.district);
 
   useEffect(() => {
     const unsub = useAppStore.persist.onFinishHydration(() => {
@@ -118,18 +124,25 @@ export function AppShell() {
       lotsJu,
       provinceCode,
       districtCode,
+      subjectKind,
+      careerTrack,
     ],
   );
 
   const { chart, events, focus, people, natal } = result;
+  const who = subjectName(subjectKind, { personName, province, city, district });
+  const place = isPlaceSubject(subjectKind);
 
   const fortune = useMemo(() => {
-    const birth = birthYear.trim() ? Number(birthYear) : null;
+    const birth = !place && birthYear.trim() ? Number(birthYear) : null;
     return buildFortunePack(civil, {
       gender,
       birthYear: birth && birth >= 1920 && birth <= 2030 ? birth : null,
+      subjectKind,
+      careerTrack,
+      subjectLabel: who,
     });
-  }, [civil.year, civil.month, civil.day, civil.hour, gender, birthYear]);
+  }, [civil.year, civil.month, civil.day, civil.hour, gender, birthYear, subjectKind, careerTrack, place, who]);
 
   const period = fortune[fortuneScope];
   const boardChart = tab === "fortune" ? period.chart : chart;
@@ -247,7 +260,7 @@ export function AppShell() {
             </div>
 
             {tab === "people" ? (
-              <PeoplePanel people={people} chart={chart} onSelectPalace={onSelectPalace} />
+              <PeoplePanel people={people} chart={chart} onSelectPalace={onSelectPalace} subject={who} />
             ) : tab === "directions" ? (
               <DirectionPanel chart={chart} />
             ) : tab === "weather" ? (
@@ -257,6 +270,7 @@ export function AppShell() {
                 pack={fortune}
                 scope={fortuneScope}
                 onScope={(k) => setField("fortuneScope", k)}
+                subject={who}
               />
             ) : tab === "consult" ? (
               <ConsultPanel chart={chart} events={events} focus={focus} />
@@ -269,16 +283,15 @@ export function AppShell() {
                 >
                   返回十二类扫描
                 </button>
-                <EventDetail score={focus} chart={chart} personName={personName} />
+                <EventDetail score={focus} chart={chart} personName={who} />
               </div>
             ) : (
               <div className="flex flex-col gap-4">
                 <div>
                   <h2 className="font-display text-lg text-fg">
-                    {personName.trim() ? `${personName} · ` : ""}
-                    十二类事项
+                    {who} · 十二类事项
                   </h2>
-                  {natal ? (
+                  {natal && !place ? (
                     <div className="mt-2 rounded-md border border-border bg-elevated px-3 py-2">
                       <div className="flex flex-wrap gap-1">
                         <Badge tone="warn">{natal.pillar.name}</Badge>
@@ -293,7 +306,9 @@ export function AppShell() {
                     </div>
                   ) : (
                     <p className="text-xs text-muted">
-                      按权重排序。上方可填称呼、性别、出生年；填年命后另计本命年、冲太岁、命干落宫，点一项看神星门三段。
+                      {place
+                        ? `以「${who}」为预测对象。事业可切学业。点一项看神星门三段。`
+                        : "按权重排序。可填称呼、性别、出生年；填年命后另计本命年、冲太岁。事业可切学业。"}
                     </p>
                   )}
                 </div>

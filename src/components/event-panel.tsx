@@ -1,9 +1,12 @@
 import { KIND_LABEL } from "@/lib/qimen/score";
+import { pathEventId, visibleEventIds } from "@/lib/qimen/subject";
+import { useAppStore } from "@/lib/store";
 import type { EventScore, PalaceId, PeopleLink, QimenChart } from "@/lib/qimen/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { FeedbackForm } from "@/components/feedback-form";
 import { ComposeBox } from "@/components/consult-panel";
+import { CareerSwitch } from "@/components/career-switch";
 
 function toneOf(level: string): "good" | "bad" | "warn" | "neutral" {
   if (level.includes("吉")) return "good";
@@ -35,36 +38,49 @@ export function EventList({
   activeId: string;
   onPick: (id: EventScore["eventId"]) => void;
 }) {
+  const careerTrack = useAppStore((s) => s.careerTrack);
+  const shown = events.filter((ev) => visibleEventIds(careerTrack).includes(ev.eventId));
+  const pathId = pathEventId(careerTrack);
   return (
     <ul className="flex flex-col gap-1.5">
-      {events.map((ev) => (
-        <li key={ev.eventId}>
-          <button
-            type="button"
-            onClick={() => onPick(ev.eventId)}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors",
-              activeId === ev.eventId
-                ? "border-primary bg-elevated"
-                : "border-border bg-surface hover:border-border-strong",
-            )}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm text-fg">{ev.name}</span>
-                <span className="font-mono text-xs tabular-nums text-muted">
-                  {ev.score > 0 ? "+" : ""}
-                  {ev.score}
-                </span>
-              </div>
-              <div className="mt-1.5 flex items-center gap-2">
-                <ScoreMeter score={ev.score} />
-                <Badge tone={toneOf(ev.level)}>{ev.level}</Badge>
-              </div>
+      {shown.map((ev) => {
+        const isPath = ev.eventId === pathId;
+        return (
+          <li key={ev.eventId}>
+            <div
+              className={cn(
+                "flex w-full items-start gap-2 rounded-md border px-3 py-2.5 transition-colors",
+                activeId === ev.eventId
+                  ? "border-primary bg-elevated"
+                  : "border-border bg-surface hover:border-border-strong",
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => onPick(ev.eventId)}
+                className="min-w-0 flex-1 text-left"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-sm text-fg">{ev.name}</span>
+                  <span className="font-mono text-xs tabular-nums text-muted">
+                    {ev.score > 0 ? "+" : ""}
+                    {ev.score}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <ScoreMeter score={ev.score} />
+                  <Badge tone={toneOf(ev.level)}>{ev.level}</Badge>
+                </div>
+              </button>
+              {isPath ? (
+                <div className="shrink-0 pt-0.5">
+                  <CareerSwitch compact />
+                </div>
+              ) : null}
             </div>
-          </button>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -193,17 +209,20 @@ export function PeoplePanel({
   people,
   chart,
   onSelectPalace,
+  subject,
 }: {
   people: PeopleLink[];
   chart: QimenChart;
   onSelectPalace: (id: PalaceId) => void;
+  subject?: string;
 }) {
   const self = chart.palaces[chart.meta.zhiFuPalace];
+  const me = subject?.trim() || "我";
   return (
     <div>
       <p className="text-sm text-fg">
         值符在{self.bagua}
-        {self.id}宫，以此为「我」。周围宫位按生克定六亲，再以门星神权衡当下关系。
+        {self.id}宫，以此为预测对象「{me}」。周围宫位按生克定六亲（人或当地人事），再以门星神权衡当下关系。
       </p>
       <ul className="mt-3 flex flex-col gap-2">
         {people.map((p) => (

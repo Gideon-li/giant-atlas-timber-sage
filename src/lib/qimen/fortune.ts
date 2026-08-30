@@ -22,10 +22,9 @@ import {
 } from "./calendar";
 import { buildChart, palaceOfEarthBranch } from "./chart";
 import { natalFactors, natalView } from "./natal";
-import { ganzhiFlags, luckLevel, probabilityOf, scoreAllEvents } from "./score";
+import { ganzhiFlags, luckLevel, probabilityOf, scoreAllEvents, type ScoreOpts } from "./score";
 import type {
   EventScore,
-  Gender,
   LuckLevel,
   Palace,
   PalaceId,
@@ -306,6 +305,7 @@ function composePeriodReading(
   score: number,
   level: LuckLevel,
   phases: EventScore["phases"],
+  subject?: string,
 ): string {
   const label = kind === "year" ? "年运" : kind === "month" ? "月运" : "日运";
   const pillar =
@@ -316,7 +316,8 @@ function composePeriodReading(
   const kong = palace.isKong ? "值符落空，名气易虚，宜待填实。" : "";
   const fu = chart.meta.fuYin ? "全盘伏吟，事多稽留反复。" : "";
   const fan = chart.meta.fanYin ? "全盘反吟，变动大、难安定。" : "";
-  return `${label}取${palace.bagua}${palace.id}宫值符为「我」，${palace.god ?? "无神"}、${palace.star}、${palace.gate ?? "无门"}。干支${pillar}。综合${level}（${score > 0 ? "+" : ""}${score}，顺利倾向 ${probabilityOf(score)}%）。神星门：${startTone}，${midTone}，${endTone}。${kong}${fu}${fan}分值算法与十二类事项相同：S 加权后 P=σ(S/22)。此为交节/日中盘面权衡，供学习，并非定论。`;
+  const me = subject ? `「${subject}」` : "「我」";
+  return `${label}取${palace.bagua}${palace.id}宫值符为${me}，${palace.god ?? "无神"}、${palace.star}、${palace.gate ?? "无门"}。干支${pillar}。综合${level}（${score > 0 ? "+" : ""}${score}，顺利倾向 ${probabilityOf(score)}%）。神星门：${startTone}，${midTone}，${endTone}。${kong}${fu}${fan}分值算法与十二类事项相同：S 加权后 P=σ(S/22)。此为交节/日中盘面权衡，供学习，并非定论。`;
 }
 
 function associations(
@@ -375,13 +376,21 @@ function finish(
   subtitle: string,
   civil: CivilTime,
   chart: QimenChart,
-  opts: { gender?: Gender; birthYear?: number | null },
+  opts: ScoreOpts | undefined,
   slices: FortuneSlice[],
 ): PeriodFortune {
   const { extra, marks } = periodExtras(chart, kind, opts);
   const self = scoreSelf(chart, extra);
   const events = scoreAllEvents(chart, opts);
-  const reading = composePeriodReading(kind, chart, self.palace, self.score, self.level, self.phases);
+  const reading = composePeriodReading(
+    kind,
+    chart,
+    self.palace,
+    self.score,
+    self.level,
+    self.phases,
+    opts?.subjectLabel,
+  );
   const assoc = associations(kind, chart, self.palace, self.level, slices);
   const omen = self.palace.god === "值符" ? "天乙在门，贵人车马" : self.palace.god === "腾蛇" ? "虚惊怪异，半途而回" : "";
   const classicCite = self.palace.gate
@@ -410,10 +419,7 @@ function finish(
   };
 }
 
-export function buildFortunePack(
-  civil: CivilTime,
-  opts?: { gender?: Gender; birthYear?: number | null },
-): FortunePack {
+export function buildFortunePack(civil: CivilTime, opts?: ScoreOpts): FortunePack {
   const yb = yearBoundary(civil);
   const mb = monthBoundary(civil);
   const yearChart = buildChart(yb.lichun);

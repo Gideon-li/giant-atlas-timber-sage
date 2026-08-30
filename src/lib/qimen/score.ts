@@ -26,6 +26,7 @@ import { detectClassicPatterns } from "./classic";
 import { enrichEventScore } from "./reading";
 import { findPalaceBy } from "./chart";
 import { natalFactors } from "./natal";
+import { displayEvent, type CareerTrack, type SubjectKind } from "./subject";
 import type {
   EventId,
   EventScore,
@@ -248,10 +249,18 @@ function romanceBath(palace: Palace, eventId: EventId): number {
   return 0;
 }
 
+export type ScoreOpts = {
+  gender?: Gender;
+  birthYear?: number | null;
+  subjectKind?: SubjectKind;
+  careerTrack?: CareerTrack;
+  subjectLabel?: string;
+};
+
 export function scoreEvent(
   chart: QimenChart,
   eventId: EventId,
-  opts?: { gender?: Gender; birthYear?: number | null },
+  opts?: ScoreOpts,
 ): EventScore {
   const def = EVENT_MAP[eventId];
   const palaceId: PalaceId =
@@ -389,11 +398,13 @@ export function scoreEvent(
   const raw = start * 0.25 + process * 0.35 + end * 0.4 + aux * 0.55;
   const score = Math.round(clamp(raw, -100, 100));
 
-  const reading = composeReading(chart, palace, def.name, factors, score, {
+  const shown = displayEvent(eventId, opts?.subjectKind ?? "person", opts?.careerTrack ?? "career");
+  const subject = opts?.subjectLabel?.trim();
+  const reading = composeReading(chart, palace, shown.name, factors, score, {
     start,
     process,
     end,
-  });
+  }, subject);
 
   return enrichEventScore(
     chart,
@@ -401,8 +412,8 @@ export function scoreEvent(
     eventId,
     {
       eventId,
-      name: def.name,
-      brief: def.brief,
+      name: shown.name,
+      brief: shown.brief,
       palaceId,
       score,
       probability: probabilityOf(score),
@@ -417,6 +428,7 @@ export function scoreEvent(
       reading,
     },
     patterns,
+    opts,
   );
 }
 
@@ -472,6 +484,7 @@ function composeReading(
   factors: ScoreFactor[],
   score: number,
   phases: { start: number; process: number; end: number },
+  subject?: string,
 ): string {
   const level = luckLevel(score);
   const top = factors.filter((f) => Math.abs(f.weight) >= 8).slice(0, 4);
@@ -483,13 +496,11 @@ function composeReading(
   const endTone = phases.end >= 4 ? "收局有望" : phases.end <= -4 ? "收局乏力" : "收局两可";
   const help = pos.length ? `有利：${pos.join("；")}。` : "";
   const harm = neg.length ? `不利：${neg.join("；")}。` : "";
-  return `问「${eventName}」，用神在${palace.bagua}${palace.id}宫（${palace.direction}），天${palace.heavenStem}地${palace.earthStem}，${palace.god ?? "无神"}、${palace.star}、${palace.gate ?? "无门"}。综合${level}（${score > 0 ? "+" : ""}${score}）。神星门分看：${startTone}，${midTone}，${endTone}。日柱${chart.pillars.day.name}、时柱${chart.pillars.hour.name}。${help}${harm}${kong}此为盘面权重模型，宜作决策参考，勿当作唯一依据。`;
+  const who = subject ? `以「${subject}」为「我」，问「${eventName}」` : `问「${eventName}」`;
+  return `${who}，用神在${palace.bagua}${palace.id}宫（${palace.direction}），天${palace.heavenStem}地${palace.earthStem}，${palace.god ?? "无神"}、${palace.star}、${palace.gate ?? "无门"}。综合${level}（${score > 0 ? "+" : ""}${score}）。神星门分看：${startTone}，${midTone}，${endTone}。日柱${chart.pillars.day.name}、时柱${chart.pillars.hour.name}。${help}${harm}${kong}此为盘面权重模型，宜作决策参考，勿当作唯一依据。`;
 }
 
-export function scoreAllEvents(
-  chart: QimenChart,
-  opts?: { gender?: Gender; birthYear?: number | null },
-): EventScore[] {
+export function scoreAllEvents(chart: QimenChart, opts?: ScoreOpts): EventScore[] {
   return EVENTS.map((e) => scoreEvent(chart, e.id, opts)).sort((a, b) => b.score - a.score);
 }
 

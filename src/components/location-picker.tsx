@@ -12,7 +12,7 @@ export function LocationPicker() {
 
   return (
     <div className="mt-4 border-t border-border pt-4">
-      <p className="text-xs text-muted">地理位置（中国）</p>
+      <p className="text-xs text-muted">地理位置（中国）· 选对象为区县/城市/省份/国家时，以下即预测对象</p>
       <div className="fit-fields mt-2">
         <label className="flex flex-col gap-1 text-xs text-muted">
           省 / 直辖市

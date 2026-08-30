@@ -1,5 +1,6 @@
-import { EVENT_ASSOC_HINT, GATE_CLASSIC, STAR_SONG, type ClassicPattern } from "./classic";
+import { GATE_CLASSIC, STAR_SONG, type ClassicPattern } from "./classic";
 import { extractSymbolPack } from "./extract";
+import { assocHints, type CareerTrack, type SubjectKind } from "./subject";
 import type { EventId, EventScore, LuckLevel, Palace, QimenChart } from "./types";
 
 const HOUR_OMEN: Record<string, Record<string, string>> = {
@@ -71,8 +72,9 @@ export function buildAssociations(
   eventId: EventId,
   level: LuckLevel,
   patterns: ClassicPattern[],
+  ctx?: { subjectKind?: SubjectKind; careerTrack?: CareerTrack; subjectLabel?: string },
 ): string[] {
-  const hints = EVENT_ASSOC_HINT[eventId];
+  const hints = assocHints(eventId, ctx?.subjectKind ?? "person", ctx?.careerTrack ?? "career");
   const lucky = level.includes("吉");
   const bad = level.includes("凶");
   const hour = chart.pillars.hour.branch;
@@ -135,8 +137,9 @@ export function composeClassicReading(
   phases: { start: number; process: number; end: number },
   patterns: ClassicPattern[],
   associations: string[],
+  subject?: string,
 ): string {
-  const who = eventName;
+  const who = subject ? `以「${subject}」为「我」，问「${eventName}」` : `问「${eventName}」`;
   const g = palace.gate ? GATE_CLASSIC[palace.gate] : null;
   const star = STAR_SONG[palace.star] ?? palace.star;
   const pat = patterns[0];
@@ -152,7 +155,7 @@ export function composeClassicReading(
   const sign = score > 0 ? `顺利倾向偏正（${score}）` : score < 0 ? `阻力偏显（${score}）` : "吉凶相抵";
 
   return [
-    `问「${who}」，用神在${palace.bagua}${palace.id}宫，${palace.god ?? "无神"} / ${palace.star} / ${palace.gate ?? "无门"}。${sign}，总断${level}。`,
+    `${who}，用神在${palace.bagua}${palace.id}宫，${palace.god ?? "无神"} / ${palace.star} / ${palace.gate ?? "无门"}。${sign}，总断${level}。`,
     `神应开始、星应过程、门应收局：${begin}；${mid}；${fin}。`,
     g ? `${g.song}` : star,
     cite,
@@ -168,8 +171,9 @@ export function enrichEventScore(
   eventId: EventId,
   base: Omit<EventScore, "associations" | "omen" | "classicCite"> & { reading: string },
   patterns: ClassicPattern[],
+  ctx?: { subjectKind?: SubjectKind; careerTrack?: CareerTrack; subjectLabel?: string },
 ): EventScore {
-  const associations = buildAssociations(chart, palace, eventId, base.level, patterns);
+  const associations = buildAssociations(chart, palace, eventId, base.level, patterns, ctx);
   const omen =
     HOUR_OMEN[palace.star]?.[chart.pillars.hour.branch] ??
     (palace.god ? GOD_OMEN[palace.god] ?? "" : "");
@@ -185,6 +189,7 @@ export function enrichEventScore(
     { start: base.phases.start.score, process: base.phases.process.score, end: base.phases.end.score },
     patterns,
     associations,
+    ctx?.subjectLabel,
   );
   return { ...base, reading, associations, omen, classicCite };
 }

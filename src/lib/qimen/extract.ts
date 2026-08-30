@@ -73,6 +73,7 @@ export function extractSymbolPack(
   palace: Palace,
   eventId: EventId,
   level: LuckLevel,
+  extra?: { subjectLine?: string; eventTitle?: string },
 ): SymbolPack {
   const pol = polarity(level);
   const names = [
@@ -120,7 +121,8 @@ export function extractSymbolPack(
 
   const ev = EVENTS.find((e) => e.id === eventId)?.name ?? eventId;
   const prompt = [
-    `事项：${ev}；总断${level}。`,
+    extra?.subjectLine ? extra.subjectLine : "",
+    `事项：${extra?.eventTitle ?? ev}；总断${level}。`,
     `用神：${palace.bagua}${palace.id}宫${palace.direction}，神${palace.god ?? "无"}星${palace.star}门${palace.gate ?? "无"}，天${palace.heavenStem}地${palace.earthStem}${palace.changsheng ? " " + palace.changsheng : ""}。`,
     `值符在${PALACE_META[chart.meta.zhiFuPalace].bagua}${chart.meta.zhiFuPalace}宫，值使${chart.meta.zhiShiGate}。`,
     `干支：${chart.pillars.year.name} ${chart.pillars.month.name} ${chart.pillars.day.name} ${chart.pillars.hour.name}。${chart.ju.label}。`,
@@ -130,7 +132,9 @@ export function extractSymbolPack(
     `地点词：${places.slice(0, 10).join("、")}`,
     `事物词：${things.slice(0, 10).join("、")}`,
     `时间词：${times.slice(0, 8).join("、")}`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return {
     tokens,

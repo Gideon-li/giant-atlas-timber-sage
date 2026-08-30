@@ -2,10 +2,19 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { EVENTS } from "@/lib/qimen/constants";
 import { extractSymbolPack } from "@/lib/qimen/extract";
+import {
+  displayEvent,
+  isPlaceSubject,
+  subjectName,
+  subjectPrompt,
+  subjectScope,
+  visibleEventIds,
+} from "@/lib/qimen/subject";
 import { composeAssociation, consultChart, type ConsultCompose } from "@/lib/server/consult";
 import { useAppStore } from "@/lib/store";
+import { CareerSwitch } from "@/components/career-switch";
+import { stripModelMarkup } from "@/lib/text";
 import type { EventScore, QimenChart } from "@/lib/qimen/types";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +24,7 @@ function toneOf(level: string): "good" | "bad" | "warn" | "neutral" {
   return "warn";
 }
 
-function SceneCard({ scene }: { scene: ConsultCompose }) {
+function SceneCard({ scene, place }: { scene: ConsultCompose; place?: boolean }) {
   return (
     <article className="rounded-lg border border-border bg-surface p-3 sm:p-4">
       <p className="text-sm leading-7 text-fg">{scene.scene || scene.content}</p>
@@ -23,7 +32,7 @@ function SceneCard({ scene }: { scene: ConsultCompose }) {
         {[
           ["时间", scene.time],
           ["地点", scene.place],
-          ["人物", scene.people],
+          [place ? "人事" : "人物", scene.people],
         ].map(([k, v]) =>
           v ? (
             <div key={k} className="rounded-md border border-border bg-elevated p-2.5">
@@ -63,13 +72,24 @@ export function ComposeBox({
   const province = useAppStore((s) => s.province);
   const city = useAppStore((s) => s.city);
   const district = useAppStore((s) => s.district);
+  const subjectKind = useAppStore((s) => s.subjectKind);
+  const careerTrack = useAppStore((s) => s.careerTrack);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [scene, setScene] = useState<ConsultCompose | null>(null);
 
+  const loc = { personName, province, city, district };
+  const who = subjectName(subjectKind, loc);
+  const scope = subjectScope(subjectKind, loc);
+  const subLine = subjectPrompt(subjectKind, who, scope);
+
   const pack = useMemo(
-    () => extractSymbolPack(chart, chart.palaces[score.palaceId], score.eventId, score.level),
-    [chart, score.palaceId, score.eventId, score.level],
+    () =>
+      extractSymbolPack(chart, chart.palaces[score.palaceId], score.eventId, score.level, {
+        subjectLine: subLine,
+        eventTitle: score.name,
+      }),
+    [chart, score.palaceId, score.eventId, score.level, score.name, subLine],
   );
 
   const onCompose = async () => {
@@ -78,7 +98,7 @@ export function ComposeBox({
     try {
       const r = await composeAssociation({
         data: {
-          question: `请就「${score.name}」根据盘面象征库，联想一件最合理的具体事情。`,
+          question: `请就「${score.name}」根据盘面象征库，围绕「${who}」联想一件最合理的具体事情。`,
           eventName: score.name,
           level: score.level,
           score: score.score,
@@ -86,7 +106,8 @@ export function ComposeBox({
           brief: pack.brief,
           person: personName.trim() || undefined,
           gender,
-          location: `${province}${city}${district}`,
+          location: scope,
+          subjectLine: subLine,
         },
       });
       if (!r.ok) setErr(r.error);
@@ -110,7 +131,7 @@ export function ComposeBox({
         先从象征库按吉凶取词，再交给模型组合成相对具体的时间、地点、人物、事情。供学习，并非实录。
       </p>
       {err ? <p className="mt-2 text-xs text-inauspicious-fg">{err}</p> : null}
-      {scene ? <div className="mt-3">{<SceneCard scene={scene} />}</div> : null}
+      {scene ? <div className="mt-3">{<SceneCard scene={scene} place={isPlaceSubject(subjectKind)} />}</div> : null}
     </div>
   );
 }
@@ -131,19 +152,34 @@ export function ConsultPanel({
   const province = useAppStore((s) => s.province);
   const city = useAppStore((s) => s.city);
   const district = useAppStore((s) => s.district);
+  const subjectKind = useAppStore((s) => s.subjectKind);
+  const careerTrack = useAppStore((s) => s.careerTrack);
   const score = events.find((e) => e.eventId === eventId) ?? focus;
+  const loc = { personName, province, city, district };
+  const who = subjectName(subjectKind, loc);
+  const scope = subjectScope(subjectKind, loc);
+  const subLine = subjectPrompt(subjectKind, who, scope);
   const pack = useMemo(
-    () => extractSymbolPack(chart, chart.palaces[score.palaceId], score.eventId, score.level),
-    [chart, score.palaceId, score.eventId, score.level],
+    () =>
+      extractSymbolPack(chart, chart.palaces[score.palaceId], score.eventId, score.level, {
+        subjectLine: subLine,
+        eventTitle: score.name,
+      }),
+    [chart, score.palaceId, score.eventId, score.level, score.name, subLine],
   );
-  const [question, setQuestion] = useState(`就「${score.name}」可能发生什么具体的事？`);
+  const [question, setQuestion] = useState(`就「${who}」的「${score.name}」可能发生什么具体的事？`);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [scene, setScene] = useState<ConsultCompose | null>(null);
   const [chat, setChat] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const resultRef = useRef<HTMLDivElement>(null);
 
-  const loc = `${province}${city}${district}`;
+  useEffect(() => {
+    setQuestion(`就「${who}」的「${score.name}」可能发生什么具体的事？`);
+    setScene(null);
+    setChat([]);
+    setErr(null);
+  }, [who, score.name, subjectKind, careerTrack]);
 
   useEffect(() => {
     if (scene || chat.length) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -155,7 +191,7 @@ export function ConsultPanel({
     try {
       const r = await composeAssociation({
         data: {
-          question: question.trim() || `请就「${score.name}」联想一件最合理的具体事情。`,
+          question: question.trim() || `请就「${score.name}」围绕「${who}」联想一件最合理的具体事情。`,
           eventName: score.name,
           level: score.level,
           score: score.score,
@@ -163,7 +199,8 @@ export function ConsultPanel({
           brief: pack.brief,
           person: personName.trim() || undefined,
           gender,
-          location: loc,
+          location: scope,
+          subjectLine: subLine,
         },
       });
       if (!r.ok) setErr(r.error);
@@ -190,14 +227,15 @@ export function ConsultPanel({
           brief: pack.brief,
           history: chat,
           person: personName.trim() || undefined,
-          location: loc,
+          location: scope,
+          subjectLine: subLine,
         },
       });
       if (!r.ok) {
         setErr(r.error);
         setChat(chat);
       } else {
-        setChat([...next, { role: "assistant", content: r.text }]);
+        setChat([...next, { role: "assistant", content: stripModelMarkup(r.text) }]);
         setQuestion("");
       }
     } catch (e) {
@@ -213,7 +251,7 @@ export function ConsultPanel({
       <div>
         <h2 className="font-display text-lg text-fg">智断咨询</h2>
         <p className="text-xs text-muted">
-          先按当前用神宫从象征库抽出人物、地点、事物、时间词，再交给模型组合成一件最合理的事。可追问。供学习，并非定论。
+          对象是「{who}」。先从象征库抽词，再组合成一件最合理的事。追问用纯文本，不用井号星号。供学习，并非定论。
         </p>
       </div>
 
@@ -223,8 +261,7 @@ export function ConsultPanel({
           {score.score > 0 ? "+" : ""}
           {score.score} · {score.level}
         </Badge>
-        {personName.trim() ? <Badge>{personName.trim()}</Badge> : null}
-        <Badge tone="neutral">{loc}</Badge>
+        <Badge>{who}</Badge>
       </div>
 
       <div>
@@ -243,21 +280,24 @@ export function ConsultPanel({
 
       <label className="flex flex-col gap-1 text-xs text-muted">
         所问之事
-        <select
-          value={score.eventId}
-          onChange={(e) => {
-            setField("eventId", e.target.value as typeof eventId);
-            const name = EVENTS.find((ev) => ev.id === e.target.value)?.name;
-            if (name) setQuestion(`就「${name}」可能发生什么具体的事？`);
-          }}
-          className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
-        >
-          {EVENTS.map((ev) => (
-            <option key={ev.id} value={ev.id}>
-              {ev.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={visibleEventIds(careerTrack).includes(score.eventId) ? score.eventId : careerTrack === "study" ? "study" : "career"}
+            onChange={(e) => {
+              setField("eventId", e.target.value as typeof eventId);
+              const name = displayEvent(e.target.value as typeof eventId, subjectKind, careerTrack).name;
+              setQuestion(`就「${who}」的「${name}」可能发生什么具体的事？`);
+            }}
+            className="h-11 min-w-0 flex-1 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+          >
+            {visibleEventIds(careerTrack).map((id) => (
+              <option key={id} value={id}>
+                {displayEvent(id, subjectKind, careerTrack).name}
+              </option>
+            ))}
+          </select>
+          <CareerSwitch />
+        </div>
       </label>
 
       <label className="flex flex-col gap-1 text-xs text-muted">
@@ -283,7 +323,7 @@ export function ConsultPanel({
       {err ? <p className="text-xs text-inauspicious-fg">{err}</p> : null}
 
       <div ref={resultRef} className="flex flex-col gap-3">
-      {scene ? <SceneCard scene={scene} /> : null}
+      {scene ? <SceneCard scene={scene} place={isPlaceSubject(subjectKind)} /> : null}
 
       {chat.length ? (
         <ul className="flex flex-col gap-2">

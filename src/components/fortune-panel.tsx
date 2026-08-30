@@ -1,8 +1,11 @@
 import { useState } from "react";
 import type { FortuneKind, FortunePack, FortuneSlice, PeriodFortune } from "@/lib/qimen/fortune";
+import { pathEventId, visibleEventIds } from "@/lib/qimen/subject";
+import { useAppStore } from "@/lib/store";
 import type { EventScore } from "@/lib/qimen/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { CareerSwitch } from "@/components/career-switch";
 
 function toneOf(level: string): "good" | "bad" | "warn" | "neutral" {
   if (level.includes("吉")) return "good";
@@ -131,22 +134,28 @@ function OverallCard({ f }: { f: PeriodFortune }) {
 }
 
 function EventRows({ events }: { events: EventScore[] }) {
-  const [open, setOpen] = useState<string | null>(events[0]?.eventId ?? null);
+  const careerTrack = useAppStore((s) => s.careerTrack);
+  const shown = events.filter((ev) => visibleEventIds(careerTrack).includes(ev.eventId));
+  const pathId = pathEventId(careerTrack);
+  const [open, setOpen] = useState<string | null>(shown[0]?.eventId ?? null);
   return (
     <ul className="flex flex-col gap-1.5">
-      {events.map((ev) => {
+      {shown.map((ev) => {
         const on = open === ev.eventId;
+        const isPath = ev.eventId === pathId;
         return (
           <li key={ev.eventId}>
-            <button
-              type="button"
-              onClick={() => setOpen(on ? null : ev.eventId)}
+            <div
               className={cn(
-                "flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors",
+                "flex w-full items-start gap-2 rounded-md border px-3 py-2.5 transition-colors",
                 on ? "border-primary bg-elevated" : "border-border bg-surface hover:border-border-strong",
               )}
             >
-              <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => setOpen(on ? null : ev.eventId)}
+                className="min-w-0 flex-1 text-left"
+              >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-fg">{ev.name}</span>
                   <span className="font-mono text-xs tabular-nums text-muted">
@@ -159,8 +168,13 @@ function EventRows({ events }: { events: EventScore[] }) {
                   <Badge tone={toneOf(ev.level)}>{ev.level}</Badge>
                 </div>
                 {on ? <p className="mt-2 text-xs leading-5 text-muted">{ev.reading}</p> : null}
-              </div>
-            </button>
+              </button>
+              {isPath ? (
+                <div className="shrink-0 pt-0.5">
+                  <CareerSwitch compact />
+                </div>
+              ) : null}
+            </div>
           </li>
         );
       })}
@@ -178,10 +192,12 @@ export function FortunePanel({
   pack,
   scope,
   onScope,
+  subject,
 }: {
   pack: FortunePack;
   scope: FortuneKind;
   onScope: (k: FortuneKind) => void;
+  subject?: string;
 }) {
   const f = pack[scope];
   const sliceHint =
@@ -189,9 +205,9 @@ export function FortunePanel({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="font-display text-lg text-fg">年 · 月 · 日运势</h2>
+        <h2 className="font-display text-lg text-fg">{subject ? `${subject} · ` : ""}年 · 月 · 日运势</h2>
         <p className="text-xs text-muted">
-          年家取立春交节、月家取当月节气交节、日家取午时。值符为「我」，分值与事项同一套 S → P=σ(S/22)。左侧九宫随此处切换为年盘、月盘或日盘。
+          年家取立春交节、月家取当月节气交节、日家取午时。值符为「{subject || "我"}」，分值与事项同一套 S → P=σ(S/22)。左侧九宫随此处切换为年盘、月盘或日盘。
         </p>
       </div>
       <div className="flex gap-1 rounded-md border border-border bg-surface p-1">
