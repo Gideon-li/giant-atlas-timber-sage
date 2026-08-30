@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { LocationPicker } from "@/components/location-picker";
-import { HOUR_NAMES } from "@/lib/qimen/constants";
+import { HOUR_NAMES, EVENTS } from "@/lib/qimen/constants";
 import { dunFromSolarMonth, hourToZhiIndex, MONTH_NAMES } from "@/lib/qimen/calendar";
 import { digitRootToJu } from "@/lib/qimen/classic";
 import {
@@ -9,12 +9,10 @@ import {
   displayEvent,
   isPlaceSubject,
   subjectName,
-  visibleEventIds,
 } from "@/lib/qimen/subject";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CareerSwitch } from "@/components/career-switch";
 import { cn } from "@/lib/utils";
 
 function pad(n: number) {
@@ -45,7 +43,6 @@ export function QueryForm() {
   const city = useAppStore((s) => s.city);
   const province = useAppStore((s) => s.province);
   const subjectKind = useAppStore((s) => s.subjectKind);
-  const careerTrack = useAppStore((s) => s.careerTrack);
   const [open, setOpen] = useState(false);
 
   const dateValue = `${civil.year}-${pad(civil.month)}-${pad(civil.day)}`;
@@ -188,13 +185,6 @@ export function QueryForm() {
           当前以「{who}」为「我」。{SUBJECT_OPTIONS.find((o) => o.id === subjectKind)?.hint}。
           {isPlaceSubject(subjectKind) ? "事项、运势、智断都按该地来推。" : "可填称呼与年命。"}
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <p className="text-xs text-muted">路径</p>
-          <CareerSwitch />
-          <p className="text-[11px] leading-5 text-subtle">
-            {careerTrack === "study" ? "学生期间看学业（原事业位）。" : "在职以后看事业。点学业即可切换。"}
-          </p>
-        </div>
       </div>
 
       <LocationPicker />
@@ -410,26 +400,23 @@ export function QueryForm() {
         {mode === "ask" ? (
           <label className="flex flex-col gap-1 text-xs text-muted">
             所问之事
-            <div className="flex items-center gap-2">
-              <select
-                value={visibleEventIds(careerTrack).includes(eventId) ? eventId : careerTrack === "study" ? "study" : "career"}
+            <select
+                value={eventId}
                 onChange={(e) => setField("eventId", e.target.value as typeof eventId)}
-                className="h-11 min-w-0 flex-1 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+                className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
               >
-                {visibleEventIds(careerTrack).map((id) => (
-                  <option key={id} value={id}>
-                    {displayEvent(id, subjectKind, careerTrack).name}
+                {EVENTS.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {displayEvent(e.id, subjectKind).name}
                   </option>
                 ))}
               </select>
-              <CareerSwitch />
-            </div>
-          </label>
-        ) : (
-          <p className="flex items-end text-xs leading-5 text-muted">
-            填写出生年后，全盘扫描另计本命年、冲太岁、命干落宫，不改各事项用神。事业可切到学业。
-          </p>
-        )}
+            </label>
+          ) : (
+            <p className="flex items-end text-xs leading-5 text-muted">
+              填写出生年后，全盘扫描另计本命年、冲太岁、命干落宫，不改各事项用神。事业与学业分列。
+            </p>
+          )}
       </div>
       ) : (
         <div className="mt-4 border-t border-border pt-4">
@@ -439,22 +426,19 @@ export function QueryForm() {
           {mode === "ask" ? (
             <label className="mt-3 flex flex-col gap-1 text-xs text-muted">
               所问之事
-              <div className="flex items-center gap-2">
-                <select
-                  value={visibleEventIds(careerTrack).includes(eventId) ? eventId : careerTrack === "study" ? "study" : "career"}
+              <select
+                  value={eventId}
                   onChange={(e) => setField("eventId", e.target.value as typeof eventId)}
-                  className="h-11 min-w-0 flex-1 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+                  className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
                 >
-                  {visibleEventIds(careerTrack).map((id) => (
-                    <option key={id} value={id}>
-                      {displayEvent(id, subjectKind, careerTrack).name}
+                  {EVENTS.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {displayEvent(e.id, subjectKind).name}
                     </option>
                   ))}
                 </select>
-                <CareerSwitch />
-              </div>
-            </label>
-          ) : null}
+              </label>
+            ) : null}
         </div>
       )}
       </div>

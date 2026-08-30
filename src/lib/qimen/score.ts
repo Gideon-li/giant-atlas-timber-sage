@@ -26,7 +26,7 @@ import { detectClassicPatterns } from "./classic";
 import { enrichEventScore } from "./reading";
 import { findPalaceBy } from "./chart";
 import { natalFactors } from "./natal";
-import { displayEvent, type CareerTrack, type SubjectKind } from "./subject";
+import { displayEvent, type SubjectKind } from "./subject";
 import type {
   EventId,
   EventScore,
@@ -253,7 +253,6 @@ export type ScoreOpts = {
   gender?: Gender;
   birthYear?: number | null;
   subjectKind?: SubjectKind;
-  careerTrack?: CareerTrack;
   subjectLabel?: string;
 };
 
@@ -398,7 +397,7 @@ export function scoreEvent(
   const raw = start * 0.25 + process * 0.35 + end * 0.4 + aux * 0.55;
   const score = Math.round(clamp(raw, -100, 100));
 
-  const shown = displayEvent(eventId, opts?.subjectKind ?? "person", opts?.careerTrack ?? "career");
+  const shown = displayEvent(eventId, opts?.subjectKind ?? "person");
   const subject = opts?.subjectLabel?.trim();
   const reading = composeReading(chart, palace, shown.name, factors, score, {
     start,

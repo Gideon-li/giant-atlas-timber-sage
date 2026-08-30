@@ -83,7 +83,6 @@ export function AppShell() {
   const districtCode = useAppStore((s) => s.districtCode);
   const fortuneScope = useAppStore((s) => s.fortuneScope);
   const subjectKind = useAppStore((s) => s.subjectKind);
-  const careerTrack = useAppStore((s) => s.careerTrack);
   const province = useAppStore((s) => s.province);
   const city = useAppStore((s) => s.city);
   const district = useAppStore((s) => s.district);
@@ -125,7 +124,6 @@ export function AppShell() {
       provinceCode,
       districtCode,
       subjectKind,
-      careerTrack,
     ],
   );
 
@@ -139,10 +137,9 @@ export function AppShell() {
       gender,
       birthYear: birth && birth >= 1920 && birth <= 2030 ? birth : null,
       subjectKind,
-      careerTrack,
       subjectLabel: who,
     });
-  }, [civil.year, civil.month, civil.day, civil.hour, gender, birthYear, subjectKind, careerTrack, place, who]);
+  }, [civil.year, civil.month, civil.day, civil.hour, gender, birthYear, subjectKind, place, who]);
 
   const period = fortune[fortuneScope];
   const boardChart = tab === "fortune" ? period.chart : chart;
@@ -307,8 +304,8 @@ export function AppShell() {
                   ) : (
                     <p className="text-xs text-muted">
                       {place
-                        ? `以「${who}」为预测对象。事业可切学业。点一项看神星门三段。`
-                        : "按权重排序。可填称呼、性别、出生年；填年命后另计本命年、冲太岁。事业可切学业。"}
+                        ? `以「${who}」为预测对象。点一项看神星门三段。事业与学业分列，各用各的用神。`
+                        : "按权重排序。可填称呼、性别、出生年；填年命后另计本命年、冲太岁。事业与学业分列。"}
                     </p>
                   )}
                 </div>

@@ -8,7 +8,7 @@ import { peopleRelations, scoreAllEvents, scoreEvent } from "@/lib/qimen/score";
 import { natalView, type NatalView } from "@/lib/qimen/natal";
 import type { FortuneKind } from "@/lib/qimen/fortune";
 import { areasOf, citiesOf, DEFAULT_LOCATION, locationLng, provinces } from "@/lib/qimen/china";
-import { pathEventId, subjectName, type CareerTrack, type SubjectKind } from "@/lib/qimen/subject";
+import { subjectName, type SubjectKind } from "@/lib/qimen/subject";
 import type { EventId, EventScore, Gender, PalaceId, PeopleLink, QimenChart } from "@/lib/qimen/types";
 
 export type Mode = "scan" | "ask";
@@ -39,7 +39,6 @@ export type QueryState = {
   city: string;
   district: string;
   subjectKind: SubjectKind;
-  careerTrack: CareerTrack;
 };
 
 type AppStore = QueryState & {
@@ -50,7 +49,6 @@ type AppStore = QueryState & {
   drawLots: () => void;
   applyLotsCode: (code: string) => void;
   setLocation: (provinceCode: string, cityCode: string, districtCode: string) => void;
-  setCareerTrack: (track: CareerTrack) => void;
   resolvedCivil: () => CivilTime;
   compute: () => {
     chart: QimenChart;
@@ -100,7 +98,6 @@ export const useAppStore = create<AppStore>()(
       city: DEFAULT_LOCATION.city,
       district: DEFAULT_LOCATION.district,
       subjectKind: "person",
-      careerTrack: "career",
       setCivil: (civil) => set({ civil }),
       setField: (key, value) => set({ [key]: value } as Partial<QueryState>),
       useNow: () => {
@@ -131,12 +128,6 @@ export const useAppStore = create<AppStore>()(
           ...namesOf(provinceCode, cityCode, districtCode),
         });
       },
-      setCareerTrack: (track) =>
-        set((s) => ({
-          careerTrack: track,
-          eventId:
-            s.eventId === "career" || s.eventId === "study" ? pathEventId(track) : s.eventId,
-        })),
       resolvedCivil: () => {
         const s = get();
         if (!s.trueSolar) return s.civil;
@@ -161,7 +152,6 @@ export const useAppStore = create<AppStore>()(
           gender: s.gender,
           birthYear: birthYear && birthYear >= 1920 && birthYear <= 2030 ? birthYear : null,
           subjectKind: s.subjectKind,
-          careerTrack: s.careerTrack,
           subjectLabel: label,
         };
         const events = scoreAllEvents(chart, opts);
@@ -195,7 +185,6 @@ export const useAppStore = create<AppStore>()(
         city: s.city,
         district: s.district,
         subjectKind: s.subjectKind,
-        careerTrack: s.careerTrack,
       }),
     },
   ),

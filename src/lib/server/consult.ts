@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { parseJsonObject, qwenChat } from "@/lib/qimen/qwen.server";
+import { luckPlainAdvice, withLuckAdvice, type LuckPlainInput } from "@/lib/qimen/luck-plain";
 import { stripModelMarkup } from "@/lib/text";
 
 export type ConsultCompose = {
@@ -33,6 +34,7 @@ export type ChatInput = {
   person?: string;
   location?: string;
   subjectLine?: string;
+  luck?: LuckPlainInput;
 };
 
 const SYSTEM_COMPOSE = `你是奇门遁甲「联想断事」助手，不是算命实录。
@@ -46,11 +48,13 @@ const SYSTEM_COMPOSE = `你是奇门遁甲「联想断事」助手，不是算�
 7. JSON 字符串里禁止出现井号、星号、反引号或任何 Markdown。`;
 
 const SYSTEM_CHAT = `你是奇门遁甲盘面咨询助手。依据用户给出的九宫摘要和象征库词条作答。
-- 先点明用了哪些符号，再组合成相对具体的人事时空。
 - 严格围绕预测对象。对象若是区县、城市、省份、国家，把值符当作该地，写该地的事，不要当成个人算命。
+- 只写两段，用「一、」「二、」：
+  一、盘面用神：点明用了哪些门、星、神，各主什么。
+  二、可能发生的具体事情：时间、地点、人物、事情。
+- 不要写第三段。系统会补上「三、吉凶提示与建议」。
 - 吉凶分说，不夸张，不保证。
-- 用中文，条理清楚。分点只用「一、二、三」或换行。
-- 严禁 Markdown：不要写 ###、##、#、**、*、反引号、代码块、链接括号。标题直接写汉字，不要加井号。
+- 用中文。严禁 Markdown：不要写 ###、##、#、**、*、反引号。
 - 供学习，并非定论。`;
 
 function clip(s: string, n: number) {
@@ -124,9 +128,12 @@ export const consultChart = createServerFn({ method: "POST" })
       data.subjectLine ? clip(data.subjectLine, 200) : "",
       data.person ? `称呼：${clip(data.person, 40)}` : "",
       data.location ? `地理位置：${clip(data.location, 40)}` : "",
+      data.luck
+        ? `事项「${data.luck.eventName}」总断${data.luck.level}（${data.luck.score > 0 ? "+" : ""}${data.luck.score}）。`
+        : "",
       `九宫摘要：${brief}`,
       pack,
-      "回答用纯中文。分点用「一、二、三」。不要出现井号、星号、反引号。",
+      "只写「一、」「二、」两段。不要写第三段，不要井号星号。",
     ]
       .filter(Boolean)
       .join("\n");
@@ -134,12 +141,15 @@ export const consultChart = createServerFn({ method: "POST" })
       [
         { role: "system", content: SYSTEM_CHAT },
         { role: "user", content: header },
-        { role: "assistant", content: "已记住当前盘面、预测对象与象征库。请提问。用纯文本回答，不要 Markdown。" },
+        { role: "assistant", content: "已记住当前盘面、预测对象与象征库。请提问。只写一、二两段，用纯文本。" },
         ...history,
         { role: "user", content: question },
       ],
       { maxTokens: 800 },
     );
     if (!r.ok) return { ok: false as const, error: r.error };
-    return { ok: true as const, text: stripModelMarkup(r.text).slice(0, 2500) };
+    const body = stripModelMarkup(r.text).slice(0, 2200);
+    const advice = data.luck ? luckPlainAdvice(data.luck) : "";
+    const text = advice ? withLuckAdvice(body, advice) : body;
+    return { ok: true as const, text: stripModelMarkup(text).slice(0, 2800) };
   });

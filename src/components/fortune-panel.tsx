@@ -1,11 +1,8 @@
 import { useState } from "react";
 import type { FortuneKind, FortunePack, FortuneSlice, PeriodFortune } from "@/lib/qimen/fortune";
-import { pathEventId, visibleEventIds } from "@/lib/qimen/subject";
-import { useAppStore } from "@/lib/store";
 import type { EventScore } from "@/lib/qimen/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { CareerSwitch } from "@/components/career-switch";
 
 function toneOf(level: string): "good" | "bad" | "warn" | "neutral" {
   if (level.includes("吉")) return "good";
@@ -134,28 +131,22 @@ function OverallCard({ f }: { f: PeriodFortune }) {
 }
 
 function EventRows({ events }: { events: EventScore[] }) {
-  const careerTrack = useAppStore((s) => s.careerTrack);
-  const shown = events.filter((ev) => visibleEventIds(careerTrack).includes(ev.eventId));
-  const pathId = pathEventId(careerTrack);
-  const [open, setOpen] = useState<string | null>(shown[0]?.eventId ?? null);
+  const [open, setOpen] = useState<string | null>(events[0]?.eventId ?? null);
   return (
     <ul className="flex flex-col gap-1.5">
-      {shown.map((ev) => {
+      {events.map((ev) => {
         const on = open === ev.eventId;
-        const isPath = ev.eventId === pathId;
         return (
           <li key={ev.eventId}>
-            <div
+            <button
+              type="button"
+              onClick={() => setOpen(on ? null : ev.eventId)}
               className={cn(
-                "flex w-full items-start gap-2 rounded-md border px-3 py-2.5 transition-colors",
+                "flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-colors",
                 on ? "border-primary bg-elevated" : "border-border bg-surface hover:border-border-strong",
               )}
             >
-              <button
-                type="button"
-                onClick={() => setOpen(on ? null : ev.eventId)}
-                className="min-w-0 flex-1 text-left"
-              >
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-fg">{ev.name}</span>
                   <span className="font-mono text-xs tabular-nums text-muted">
@@ -168,13 +159,8 @@ function EventRows({ events }: { events: EventScore[] }) {
                   <Badge tone={toneOf(ev.level)}>{ev.level}</Badge>
                 </div>
                 {on ? <p className="mt-2 text-xs leading-5 text-muted">{ev.reading}</p> : null}
-              </button>
-              {isPath ? (
-                <div className="shrink-0 pt-0.5">
-                  <CareerSwitch compact />
-                </div>
-              ) : null}
-            </div>
+              </div>
+            </button>
           </li>
         );
       })}

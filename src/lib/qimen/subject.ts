@@ -3,7 +3,6 @@ import { EVENT_ASSOC_HINT } from "./classic";
 import { EVENTS } from "./constants";
 
 export type SubjectKind = "person" | "district" | "city" | "province" | "country";
-export type CareerTrack = "career" | "study";
 
 export const SUBJECT_OPTIONS: { id: SubjectKind; label: string; hint: string }[] = [
   { id: "person", label: "个人", hint: "以问事人为「我」" },
@@ -103,20 +102,7 @@ const PLACE_EVENT: Record<EventId, { name: string; brief: string; hints: [string
   },
 };
 
-const PERSON_STUDY = {
-  name: "学业功名",
-  brief: "学生期间看文教功名。景门、天辅、值符，宜投书考试。",
-};
-
-export function displayEvent(
-  eventId: EventId,
-  kind: SubjectKind,
-  careerTrack: CareerTrack,
-): { name: string; brief: string } {
-  if (eventId === "study" || (eventId === "career" && careerTrack === "study")) {
-    if (isPlaceSubject(kind)) return { name: PLACE_EVENT.study.name, brief: PLACE_EVENT.study.brief };
-    return PERSON_STUDY;
-  }
+export function displayEvent(eventId: EventId, kind: SubjectKind): { name: string; brief: string } {
   if (isPlaceSubject(kind)) {
     const p = PLACE_EVENT[eventId];
     return { name: p.name, brief: p.brief };
@@ -125,19 +111,9 @@ export function displayEvent(
   return { name: ev?.name ?? eventId, brief: ev?.brief ?? "" };
 }
 
-export function assocHints(eventId: EventId, kind: SubjectKind, careerTrack: CareerTrack): string[] {
-  const id = eventId === "career" && careerTrack === "study" ? "study" : eventId;
-  if (isPlaceSubject(kind)) return PLACE_EVENT[id].hints;
-  if (id === "study") return EVENT_ASSOC_HINT.study;
-  return EVENT_ASSOC_HINT[id];
-}
-
-export function visibleEventIds(careerTrack: CareerTrack): EventId[] {
-  return EVENTS.map((e) => e.id).filter((id) => (careerTrack === "study" ? id !== "career" : id !== "study"));
-}
-
-export function pathEventId(careerTrack: CareerTrack): EventId {
-  return careerTrack === "study" ? "study" : "career";
+export function assocHints(eventId: EventId, kind: SubjectKind): string[] {
+  if (isPlaceSubject(kind)) return PLACE_EVENT[eventId].hints;
+  return EVENT_ASSOC_HINT[eventId];
 }
 
 export function subjectPrompt(kind: SubjectKind, name: string, scope: string): string {

@@ -1,6 +1,6 @@
 import { GATE_CLASSIC, STAR_SONG, type ClassicPattern } from "./classic";
 import { extractSymbolPack } from "./extract";
-import { assocHints, type CareerTrack, type SubjectKind } from "./subject";
+import { assocHints, type SubjectKind } from "./subject";
 import type { EventId, EventScore, LuckLevel, Palace, QimenChart } from "./types";
 
 const HOUR_OMEN: Record<string, Record<string, string>> = {
@@ -72,9 +72,9 @@ export function buildAssociations(
   eventId: EventId,
   level: LuckLevel,
   patterns: ClassicPattern[],
-  ctx?: { subjectKind?: SubjectKind; careerTrack?: CareerTrack; subjectLabel?: string },
+  ctx?: { subjectKind?: SubjectKind; subjectLabel?: string },
 ): string[] {
-  const hints = assocHints(eventId, ctx?.subjectKind ?? "person", ctx?.careerTrack ?? "career");
+  const hints = assocHints(eventId, ctx?.subjectKind ?? "person");
   const lucky = level.includes("吉");
   const bad = level.includes("凶");
   const hour = chart.pillars.hour.branch;
@@ -171,7 +171,7 @@ export function enrichEventScore(
   eventId: EventId,
   base: Omit<EventScore, "associations" | "omen" | "classicCite"> & { reading: string },
   patterns: ClassicPattern[],
-  ctx?: { subjectKind?: SubjectKind; careerTrack?: CareerTrack; subjectLabel?: string },
+  ctx?: { subjectKind?: SubjectKind; subjectLabel?: string },
 ): EventScore {
   const associations = buildAssociations(chart, palace, eventId, base.level, patterns, ctx);
   const omen =

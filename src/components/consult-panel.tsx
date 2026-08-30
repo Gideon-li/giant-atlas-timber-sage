@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EVENTS } from "@/lib/qimen/constants";
 import { extractSymbolPack } from "@/lib/qimen/extract";
 import {
   displayEvent,
@@ -9,11 +10,9 @@ import {
   subjectName,
   subjectPrompt,
   subjectScope,
-  visibleEventIds,
 } from "@/lib/qimen/subject";
 import { composeAssociation, consultChart, type ConsultCompose } from "@/lib/server/consult";
 import { useAppStore } from "@/lib/store";
-import { CareerSwitch } from "@/components/career-switch";
 import { stripModelMarkup } from "@/lib/text";
 import type { EventScore, QimenChart } from "@/lib/qimen/types";
 import { cn } from "@/lib/utils";
@@ -73,7 +72,6 @@ export function ComposeBox({
   const city = useAppStore((s) => s.city);
   const district = useAppStore((s) => s.district);
   const subjectKind = useAppStore((s) => s.subjectKind);
-  const careerTrack = useAppStore((s) => s.careerTrack);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [scene, setScene] = useState<ConsultCompose | null>(null);
@@ -131,7 +129,11 @@ export function ComposeBox({
         先从象征库按吉凶取词，再交给模型组合成相对具体的时间、地点、人物、事情。供学习，并非实录。
       </p>
       {err ? <p className="mt-2 text-xs text-inauspicious-fg">{err}</p> : null}
-      {scene ? <div className="mt-3">{<SceneCard scene={scene} place={isPlaceSubject(subjectKind)} />}</div> : null}
+      {scene ? (
+        <div className="mt-3">
+          <SceneCard scene={scene} place={isPlaceSubject(subjectKind)} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -153,7 +155,6 @@ export function ConsultPanel({
   const city = useAppStore((s) => s.city);
   const district = useAppStore((s) => s.district);
   const subjectKind = useAppStore((s) => s.subjectKind);
-  const careerTrack = useAppStore((s) => s.careerTrack);
   const score = events.find((e) => e.eventId === eventId) ?? focus;
   const loc = { personName, province, city, district };
   const who = subjectName(subjectKind, loc);
@@ -179,11 +180,13 @@ export function ConsultPanel({
     setScene(null);
     setChat([]);
     setErr(null);
-  }, [who, score.name, subjectKind, careerTrack]);
+  }, [who, score.name, subjectKind]);
 
   useEffect(() => {
     if (scene || chat.length) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [scene, chat.length]);
+
+  const palace = chart.palaces[score.palaceId];
 
   const onCompose = async () => {
     setBusy(true);
@@ -229,6 +232,21 @@ export function ConsultPanel({
           person: personName.trim() || undefined,
           location: scope,
           subjectLine: subLine,
+          luck: {
+            eventName: score.name,
+            subject: who,
+            level: score.level,
+            score: score.score,
+            probability: score.probability,
+            bagua: palace.bagua,
+            god: palace.god,
+            star: palace.star,
+            gate: palace.gate,
+            kong: palace.isKong,
+            fuYin: chart.meta.fuYin,
+            fanYin: chart.meta.fanYin,
+            patterns: score.patterns,
+          },
         },
       });
       if (!r.ok) {
@@ -251,7 +269,7 @@ export function ConsultPanel({
       <div>
         <h2 className="font-display text-lg text-fg">智断咨询</h2>
         <p className="text-xs text-muted">
-          对象是「{who}」。先从象征库抽词，再组合成一件最合理的事。追问用纯文本，不用井号星号。供学习，并非定论。
+          对象是「{who}」。先从象征库抽词，再组合成一件最合理的事。追问末段用白话解释吉凶。供学习，并非定论。
         </p>
       </div>
 
@@ -280,24 +298,21 @@ export function ConsultPanel({
 
       <label className="flex flex-col gap-1 text-xs text-muted">
         所问之事
-        <div className="flex items-center gap-2">
-          <select
-            value={visibleEventIds(careerTrack).includes(score.eventId) ? score.eventId : careerTrack === "study" ? "study" : "career"}
-            onChange={(e) => {
-              setField("eventId", e.target.value as typeof eventId);
-              const name = displayEvent(e.target.value as typeof eventId, subjectKind, careerTrack).name;
-              setQuestion(`就「${who}」的「${name}」可能发生什么具体的事？`);
-            }}
-            className="h-11 min-w-0 flex-1 rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
-          >
-            {visibleEventIds(careerTrack).map((id) => (
-              <option key={id} value={id}>
-                {displayEvent(id, subjectKind, careerTrack).name}
-              </option>
-            ))}
-          </select>
-          <CareerSwitch />
-        </div>
+        <select
+          value={score.eventId}
+          onChange={(e) => {
+            setField("eventId", e.target.value as typeof eventId);
+            const name = displayEvent(e.target.value as typeof eventId, subjectKind).name;
+            setQuestion(`就「${who}」的「${name}」可能发生什么具体的事？`);
+          }}
+          className="h-11 w-full rounded-md border border-border bg-elevated px-3 text-sm text-fg outline-none focus:border-ring"
+        >
+          {EVENTS.map((e) => (
+            <option key={e.id} value={e.id}>
+              {displayEvent(e.id, subjectKind).name}
+            </option>
+          ))}
+        </select>
       </label>
 
       <label className="flex flex-col gap-1 text-xs text-muted">
@@ -323,24 +338,24 @@ export function ConsultPanel({
       {err ? <p className="text-xs text-inauspicious-fg">{err}</p> : null}
 
       <div ref={resultRef} className="flex flex-col gap-3">
-      {scene ? <SceneCard scene={scene} place={isPlaceSubject(subjectKind)} /> : null}
+        {scene ? <SceneCard scene={scene} place={isPlaceSubject(subjectKind)} /> : null}
 
-      {chat.length ? (
-        <ul className="flex flex-col gap-2">
-          {chat.map((m, i) => (
-            <li
-              key={`${m.role}-${i}`}
-              className={cn(
-                "rounded-md border px-3 py-2 text-sm leading-6",
-                m.role === "user" ? "border-border bg-elevated text-fg" : "border-border bg-surface text-muted",
-              )}
-            >
-              <p className="text-[11px] text-subtle">{m.role === "user" ? "问" : "断"}</p>
-              <p className="mt-1 whitespace-pre-wrap">{m.content}</p>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+        {chat.length ? (
+          <ul className="flex flex-col gap-2">
+            {chat.map((m, i) => (
+              <li
+                key={`${m.role}-${i}`}
+                className={cn(
+                  "rounded-md border px-3 py-2 text-sm leading-6",
+                  m.role === "user" ? "border-border bg-elevated text-fg" : "border-border bg-surface text-muted",
+                )}
+              >
+                <p className="text-[11px] text-subtle">{m.role === "user" ? "问" : "断"}</p>
+                <p className="mt-1 whitespace-pre-wrap">{m.content}</p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </div>
   );
