@@ -13,6 +13,7 @@ import { beijingNow } from "@/lib/qimen/calendar";
 import { buildFortunePack } from "@/lib/qimen/fortune";
 import { mergeMarks } from "@/lib/qimen/natal";
 import { isPlaceSubject, subjectName } from "@/lib/qimen/subject";
+import { eventBasesForLocation, loadDistrictWeights } from "@/lib/qimen/district-model";
 import { cn } from "@/lib/utils";
 import type { PalaceId } from "@/lib/qimen/types";
 import { Badge } from "@/components/ui/badge";
@@ -80,12 +81,15 @@ export function AppShell() {
   const lotsJu = useAppStore((s) => s.lotsJu);
   const elder = useAppStore((s) => s.elder);
   const provinceCode = useAppStore((s) => s.provinceCode);
+  const cityCode = useAppStore((s) => s.cityCode);
   const districtCode = useAppStore((s) => s.districtCode);
   const fortuneScope = useAppStore((s) => s.fortuneScope);
   const subjectKind = useAppStore((s) => s.subjectKind);
   const province = useAppStore((s) => s.province);
   const city = useAppStore((s) => s.city);
   const district = useAppStore((s) => s.district);
+  const districtBases = useAppStore((s) => s.districtBases);
+  const setDistrictBases = useAppStore((s) => s.setDistrictBases);
 
   useEffect(() => {
     const unsub = useAppStore.persist.onFinishHydration(() => {
@@ -106,6 +110,19 @@ export function AppShell() {
     }
   }, [hydrated, civil.year, civil.month, civil.day, civil.hour, setCivil]);
 
+  useEffect(() => {
+    let live = true;
+    loadDistrictWeights().then((pack) => {
+      if (!live) return;
+      setDistrictBases(
+        eventBasesForLocation(pack, { province, city, district, provinceCode, cityCode, districtCode }),
+      );
+    });
+    return () => {
+      live = false;
+    };
+  }, [province, city, district, provinceCode, cityCode, districtCode, setDistrictBases]);
+
   const result = useMemo(
     () => compute(),
     [
@@ -122,8 +139,10 @@ export function AppShell() {
       lotsMonth,
       lotsJu,
       provinceCode,
+      cityCode,
       districtCode,
       subjectKind,
+      districtBases,
     ],
   );
 
@@ -138,8 +157,9 @@ export function AppShell() {
       birthYear: birth && birth >= 1920 && birth <= 2030 ? birth : null,
       subjectKind,
       subjectLabel: who,
+      bases: districtBases,
     });
-  }, [civil.year, civil.month, civil.day, civil.hour, gender, birthYear, subjectKind, place, who]);
+  }, [civil.year, civil.month, civil.day, civil.hour, gender, birthYear, subjectKind, place, who, districtBases]);
 
   const period = fortune[fortuneScope];
   const boardChart = tab === "fortune" ? period.chart : chart;
@@ -255,6 +275,10 @@ export function AppShell() {
                 </button>
               ))}
             </div>
+
+            <p className="text-[11px] leading-5 text-subtle">
+              事项、运势、人事与天气共用「{districtBases.place}」{districtBases.how}模型。神星门按该地天气系数|β|校准，吉凶符号仍依人事，不把雨势正负抄过来。
+            </p>
 
             {tab === "people" ? (
               <PeoplePanel people={people} chart={chart} onSelectPalace={onSelectPalace} subject={who} />

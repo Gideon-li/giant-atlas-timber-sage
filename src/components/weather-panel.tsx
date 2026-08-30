@@ -68,7 +68,7 @@ export function WeatherPanel({ chart }: { chart: QimenChart }) {
       <div>
         <h2 className="font-display text-lg text-fg">古法测天</h2>
         <p className="text-xs text-muted">
-          坎宫为用神。玄武主雨，腾蛇主雷，白虎主风，九天主晴，九地主雾湿，太阴主露，景门主烈日。中国每个区县按其行政中心单独训练逻辑回归，数据{" "}
+          坎宫为用神。玄武主雨，腾蛇主雷，白虎主风，九天主晴，九地主雾湿，太阴主露，景门主烈日。每个区县一套 (w, b)，事项与运势用同一套系数的|β|作神星门信度。数据{" "}
           {pack ? `${pack.start}–${pack.end}` : "2020–2026"} NOAA CPC 日降水。
           {pack ? ` 全国 ${pack.nDistricts} 个区县，${pack.nTotalSamples.toLocaleString()} 条样本。` : ""}
         </p>

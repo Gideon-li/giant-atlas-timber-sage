@@ -9,6 +9,7 @@ import { natalView, type NatalView } from "@/lib/qimen/natal";
 import type { FortuneKind } from "@/lib/qimen/fortune";
 import { areasOf, citiesOf, DEFAULT_LOCATION, locationLng, provinces } from "@/lib/qimen/china";
 import { subjectName, type SubjectKind } from "@/lib/qimen/subject";
+import { NATIONAL_BASES, type EventBases } from "@/lib/qimen/calibrated";
 import type { EventId, EventScore, Gender, PalaceId, PeopleLink, QimenChart } from "@/lib/qimen/types";
 
 export type Mode = "scan" | "ask";
@@ -49,6 +50,8 @@ type AppStore = QueryState & {
   drawLots: () => void;
   applyLotsCode: (code: string) => void;
   setLocation: (provinceCode: string, cityCode: string, districtCode: string) => void;
+  districtBases: EventBases;
+  setDistrictBases: (bases: EventBases) => void;
   resolvedCivil: () => CivilTime;
   compute: () => {
     chart: QimenChart;
@@ -98,6 +101,8 @@ export const useAppStore = create<AppStore>()(
       city: DEFAULT_LOCATION.city,
       district: DEFAULT_LOCATION.district,
       subjectKind: "person",
+      districtBases: NATIONAL_BASES,
+      setDistrictBases: (bases) => set({ districtBases: bases }),
       setCivil: (civil) => set({ civil }),
       setField: (key, value) => set({ [key]: value } as Partial<QueryState>),
       useNow: () => {
@@ -153,10 +158,11 @@ export const useAppStore = create<AppStore>()(
           birthYear: birthYear && birthYear >= 1920 && birthYear <= 2030 ? birthYear : null,
           subjectKind: s.subjectKind,
           subjectLabel: label,
+          bases: s.districtBases,
         };
         const events = scoreAllEvents(chart, opts);
         const focus = scoreEvent(chart, s.eventId, opts);
-        const people = peopleRelations(chart, s.gender);
+        const people = peopleRelations(chart, s.gender, s.districtBases);
         const natal = opts.birthYear ? natalView(chart, opts.birthYear) : null;
         return { chart, events, focus, people, natal };
       },
